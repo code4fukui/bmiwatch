@@ -172,9 +172,15 @@ button[type="submit"] {
   color: var(--text);
 }
 
+.footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .floating-reset {
   display: block;
-  margin: 12px 0 0 auto;
   box-shadow: 0 16px 30px rgba(56, 44, 20, 0.18);
 }
 

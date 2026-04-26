@@ -2,6 +2,7 @@ const STORAGE_KEY = "daily-sum-records";
 
 const form = document.getElementById("record-form");
 const amountInput = document.getElementById("amount-input");
+const exportButton = document.getElementById("export-button");
 const resetButton = document.getElementById("reset-button");
 const recentShortcuts = document.getElementById("recent-shortcuts");
 const shortcutEmpty = document.getElementById("shortcut-empty");
@@ -46,6 +47,23 @@ resetButton.addEventListener("click", () => {
   records = [];
   persistRecords();
   render();
+});
+
+exportButton.addEventListener("click", () => {
+  if (!records.length) {
+    return;
+  }
+
+  const csv = buildCsv(records);
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `daily-sum-${getLocalDateKey(new Date())}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 });
 
 function loadRecords() {
@@ -272,4 +290,27 @@ function addRecord(amount) {
   records.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   persistRecords();
   render();
+}
+
+function buildCsv(source) {
+  const rows = [
+    ["日時", "日付", "量"],
+    ...source.map((record) => [
+      formatDateTime(record.timestamp),
+      getLocalDateKey(new Date(record.timestamp)),
+      String(record.amount),
+    ]),
+  ];
+
+  return rows
+    .map((row) => row.map(escapeCsvCell).join(","))
+    .join("\r\n");
+}
+
+function escapeCsvCell(value) {
+  const text = String(value);
+  if (!/[",\r\n]/.test(text)) {
+    return text;
+  }
+  return `"${text.replaceAll("\"", "\"\"")}"`;
 }
