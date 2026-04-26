@@ -19,6 +19,7 @@ const historyEmpty = document.getElementById("history-empty");
 const rowTemplate = document.getElementById("record-row-template");
 
 let records = loadRecords();
+let editingRecordId = null;
 
 render();
 
@@ -121,11 +122,29 @@ function renderTable() {
 
   for (const record of [...records].reverse()) {
     const row = rowTemplate.content.firstElementChild.cloneNode(true);
-    row.querySelector(".time-cell").textContent = formatDateTime(record.timestamp);
+    const timeCell = row.querySelector(".time-cell");
     row.querySelector(".type-cell").textContent = record.type || "-";
     row.querySelector(".amount-cell").textContent = formatAmount(record.amount);
+
+    if (editingRecordId === record.id) {
+      renderTimeEditor(timeCell, record);
+    } else {
+      const timeButton = document.createElement("button");
+      timeButton.type = "button";
+      timeButton.className = "time-button";
+      timeButton.textContent = formatDateTime(record.timestamp);
+      timeButton.addEventListener("click", () => {
+        editingRecordId = record.id;
+        render();
+      });
+      timeCell.appendChild(timeButton);
+    }
+
     row.querySelector(".delete-button").addEventListener("click", () => {
       records = records.filter((entry) => entry.id !== record.id);
+      if (editingRecordId === record.id) {
+        editingRecordId = null;
+      }
       persistRecords();
       render();
     });
@@ -296,6 +315,16 @@ function formatDateTime(value) {
   });
 }
 
+function formatDateTimeLocal(value) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
 function shortDate(value) {
   const [year, month, day] = value.split("-");
   return `${month}/${day}`;
@@ -310,6 +339,68 @@ function getLocalDateKey(date) {
 
 function createRecordId() {
   return `record-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function renderTimeEditor(container, record) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "time-edit";
+
+  const input = document.createElement("input");
+  input.type = "datetime-local";
+  input.value = formatDateTimeLocal(record.timestamp);
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.className = "mini-button";
+  saveButton.textContent = "更新";
+  saveButton.addEventListener("click", () => {
+    updateRecordTimestamp(record.id, input.value);
+  });
+
+  const cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.className = "mini-button secondary";
+  cancelButton.textContent = "取消";
+  cancelButton.addEventListener("click", () => {
+    editingRecordId = null;
+    render();
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      updateRecordTimestamp(record.id, input.value);
+    }
+    if (event.key === "Escape") {
+      editingRecordId = null;
+      render();
+    }
+  });
+
+  wrapper.append(input, saveButton, cancelButton);
+  container.appendChild(wrapper);
+  queueMicrotask(() => input.focus());
+}
+
+function updateRecordTimestamp(recordId, localValue) {
+  if (!localValue) {
+    return;
+  }
+
+  const timestamp = new Date(localValue).toISOString();
+  if (Number.isNaN(Date.parse(timestamp))) {
+    return;
+  }
+
+  const target = records.find((record) => record.id === recordId);
+  if (!target) {
+    return;
+  }
+
+  target.timestamp = timestamp;
+  records.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  editingRecordId = null;
+  persistRecords();
+  render();
 }
 
 function addRecord(amount, type = "") {

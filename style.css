@@ -310,6 +310,37 @@ td {
   text-align: left;
 }
 
+.time-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.time-button:hover {
+  transform: none;
+  color: var(--accent-strong);
+}
+
+.time-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.time-edit input {
+  width: auto;
+  min-width: 210px;
+  padding: 8px 10px;
+}
+
+.mini-button {
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
 th:last-child,
 td:last-child {
   text-align: right;
