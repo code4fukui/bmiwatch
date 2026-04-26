@@ -311,11 +311,15 @@ td {
 }
 
 .time-button {
+  display: block;
+  width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
 }
 
 .time-button:hover {
@@ -339,6 +343,7 @@ td {
 .mini-button {
   padding: 8px 12px;
   border-radius: 999px;
+  touch-action: manipulation;
 }
 
 th:last-child,
