@@ -1,6 +1,7 @@
 const STORAGE_KEY = "daily-sum-records";
 
 const form = document.getElementById("record-form");
+const typeInput = document.getElementById("type-input");
 const amountInput = document.getElementById("amount-input");
 const exportButton = document.getElementById("export-button");
 const resetButton = document.getElementById("reset-button");
@@ -10,6 +11,7 @@ const todayTotal = document.getElementById("today-total");
 const todayCount = document.getElementById("today-count");
 const latestValue = document.getElementById("latest-value");
 const recordDays = document.getElementById("record-days");
+const chartLegend = document.getElementById("chart-legend");
 const chart = document.getElementById("chart");
 const chartEmpty = document.getElementById("chart-empty");
 const recordsBody = document.getElementById("records-body");
@@ -23,14 +25,15 @@ render();
 form.addEventListener("submit", (event) => {
   event.preventDefault();
 
+  const type = typeInput.value.trim();
   const amount = Number(amountInput.value);
 
   if (Number.isNaN(amount) || amount < 0) {
     return;
   }
 
-  addRecord(amount);
-  form.reset();
+  addRecord(amount, type);
+  amountInput.value = "";
   amountInput.select();
 });
 
@@ -108,7 +111,7 @@ function renderStats() {
 
   todayTotal.textContent = formatAmount(todaysTotal);
   todayCount.textContent = `${todaysRecords.length}件の記録`;
-  latestValue.textContent = latest ? `${formatAmount(latest.amount)} / ${formatDateTime(latest.timestamp)}` : "-";
+  latestValue.textContent = latest ? formatLatestRecord(latest) : "-";
   recordDays.textContent = String(dayCount);
 }
 
@@ -119,6 +122,7 @@ function renderTable() {
   for (const record of [...records].reverse()) {
     const row = rowTemplate.content.firstElementChild.cloneNode(true);
     row.querySelector(".time-cell").textContent = formatDateTime(record.timestamp);
+    row.querySelector(".type-cell").textContent = record.type || "-";
     row.querySelector(".amount-cell").textContent = formatAmount(record.amount);
     row.querySelector(".delete-button").addEventListener("click", () => {
       records = records.filter((entry) => entry.id !== record.id);
@@ -132,27 +136,30 @@ function renderTable() {
 function renderShortcuts() {
   recentShortcuts.textContent = "";
 
-  const latestAmounts = [];
+  const latestCombos = [];
+  const seen = new Set();
 
   for (const record of [...records].reverse()) {
-    if (latestAmounts.includes(record.amount)) {
+    const key = `${record.amount}\u0000${record.type}`;
+    if (seen.has(key)) {
       continue;
     }
-    latestAmounts.push(record.amount);
-    if (latestAmounts.length === 5) {
+    seen.add(key);
+    latestCombos.push({ amount: record.amount, type: record.type });
+    if (latestCombos.length === 5) {
       break;
     }
   }
 
-  shortcutEmpty.style.display = latestAmounts.length ? "none" : "block";
+  shortcutEmpty.style.display = latestCombos.length ? "none" : "block";
 
-  for (const amount of latestAmounts) {
+  for (const combo of latestCombos) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "shortcut-button";
-    button.textContent = formatAmount(amount);
+    button.textContent = formatShortcut(combo);
     button.addEventListener("click", () => {
-      addRecord(amount);
+      addRecord(combo.amount, combo.type);
     });
     recentShortcuts.appendChild(button);
   }
@@ -160,6 +167,7 @@ function renderShortcuts() {
 
 function renderChart(dailyTotals) {
   if (!dailyTotals.length) {
+    chartLegend.textContent = "";
     chart.innerHTML = "";
     chart.style.display = "none";
     chartEmpty.style.display = "block";
@@ -174,37 +182,54 @@ function renderChart(dailyTotals) {
   const padding = { top: 24, right: 24, bottom: 40, left: 56 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
-  const maxAmount = Math.max(...dailyTotals.map((record) => record.amount), 1);
-  const minAmount = Math.min(...dailyTotals.map((record) => record.amount), 0);
-  const range = Math.max(maxAmount - minAmount, 1);
-
-  const points = dailyTotals.map((record, index) => {
-    const x = padding.left + (dailyTotals.length === 1 ? innerWidth / 2 : (innerWidth * index) / (dailyTotals.length - 1));
-    const y = padding.top + innerHeight - ((record.amount - minAmount) / range) * innerHeight;
-    return { ...record, x, y };
-  });
-
-  const linePath = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
-  const areaPath = [
-    `M ${points[0].x} ${padding.top + innerHeight}`,
-    ...points.map((point) => `L ${point.x} ${point.y}`),
-    `L ${points.at(-1).x} ${padding.top + innerHeight}`,
-    "Z",
-  ].join(" ");
+  const maxAmount = Math.max(...dailyTotals.map((record) => record.total), 1);
+  const range = maxAmount;
+  const types = getChartTypes(dailyTotals);
+  const colorMap = new Map(types.map((type) => [type, getTypeColor(type)]));
+  const step = innerWidth / dailyTotals.length;
+  const barWidth = Math.min(56, Math.max(22, step * 0.62));
 
   const yLabels = Array.from({ length: 4 }, (_, index) => {
-    const value = minAmount + (range * (3 - index)) / 3;
+    const value = (range * (3 - index)) / 3;
     const y = padding.top + (innerHeight * index) / 3;
     return { value, y };
   });
 
+  const bars = dailyTotals.flatMap((record, index) => {
+    const centerX = padding.left + step * index + step / 2;
+    const x = centerX - barWidth / 2;
+    let accumulated = 0;
+
+    return types.flatMap((type) => {
+      const amount = record.types[type] ?? 0;
+      if (!amount) {
+        return [];
+      }
+
+      const barHeight = (amount / range) * innerHeight;
+      accumulated += amount;
+      const y = padding.top + innerHeight - (accumulated / range) * innerHeight;
+
+      return [{
+        x,
+        y,
+        width: barWidth,
+        height: barHeight,
+        fill: colorMap.get(type),
+      }];
+    });
+  });
+
+  renderChartLegend(types, colorMap);
+
   chart.innerHTML = `
     ${yLabels.map(({ y }) => `<line class="grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`).join("")}
     ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${trimNumber(value)}</text>`).join("")}
-    <path class="chart-area" d="${areaPath}"></path>
-    <path class="chart-line" d="${linePath}"></path>
-    ${points.map((point) => `<circle class="chart-point" cx="${point.x}" cy="${point.y}" r="5"></circle>`).join("")}
-    ${points.map((point) => `<text class="axis-label" x="${point.x}" y="${height - 14}" text-anchor="middle">${shortDate(point.date)}</text>`).join("")}
+    ${bars.map((bar) => `<rect class="chart-bar" x="${bar.x}" y="${bar.y}" width="${bar.width}" height="${bar.height}" fill="${bar.fill}"></rect>`).join("")}
+    ${dailyTotals.map((point, index) => {
+      const centerX = padding.left + step * index + step / 2;
+      return `<text class="axis-label" x="${centerX}" y="${height - 14}" text-anchor="middle">${shortDate(point.date)}</text>`;
+    }).join("")}
   `;
 }
 
@@ -213,11 +238,15 @@ function aggregateDailyTotals(source) {
 
   for (const record of source) {
     const date = getLocalDateKey(new Date(record.timestamp));
-    totals.set(date, (totals.get(date) ?? 0) + record.amount);
+    const type = record.type || "";
+    const daily = totals.get(date) ?? { total: 0, types: {} };
+    daily.total += record.amount;
+    daily.types[type] = (daily.types[type] ?? 0) + record.amount;
+    totals.set(date, daily);
   }
 
   return [...totals.entries()]
-    .map(([date, amount]) => ({ date, amount }))
+    .map(([date, summary]) => ({ date, total: summary.total, types: summary.types }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -230,6 +259,7 @@ function normalizeRecord(item) {
     return {
       id: typeof item.id === "string" ? item.id : createRecordId(),
       timestamp: item.timestamp,
+      type: typeof item.type === "string" ? item.type : "",
       amount: Number(item.amount),
     };
   }
@@ -238,6 +268,7 @@ function normalizeRecord(item) {
     return {
       id: createRecordId(),
       timestamp: `${item.date}T00:00:00`,
+      type: typeof item.type === "string" ? item.type : "",
       amount: Number(item.amount),
     };
   }
@@ -281,10 +312,11 @@ function createRecordId() {
   return `record-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function addRecord(amount) {
+function addRecord(amount, type = "") {
   records.push({
     id: createRecordId(),
     timestamp: new Date().toISOString(),
+    type,
     amount,
   });
   records.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
@@ -294,10 +326,11 @@ function addRecord(amount) {
 
 function buildCsv(source) {
   const rows = [
-    ["日時", "日付", "量"],
+    ["日時", "日付", "種別", "量"],
     ...source.map((record) => [
       formatDateTime(record.timestamp),
       getLocalDateKey(new Date(record.timestamp)),
+      record.type,
       String(record.amount),
     ]),
   ];
@@ -313,4 +346,55 @@ function escapeCsvCell(value) {
     return text;
   }
   return `"${text.replaceAll("\"", "\"\"")}"`;
+}
+
+function formatShortcut(record) {
+  return record.type ? `${formatAmount(record.amount)} ${record.type}` : formatAmount(record.amount);
+}
+
+function formatLatestRecord(record) {
+  const summary = record.type ? `${formatAmount(record.amount)} ${record.type}` : formatAmount(record.amount);
+  return `${summary} / ${formatDateTime(record.timestamp)}`;
+}
+
+function getChartTypes(dailyTotals) {
+  const types = new Set();
+  for (const record of dailyTotals) {
+    for (const type of Object.keys(record.types)) {
+      types.add(type);
+    }
+  }
+  return [...types].sort((a, b) => a.localeCompare(b, "ja"));
+}
+
+function renderChartLegend(types, colorMap) {
+  chartLegend.textContent = "";
+
+  for (const type of types) {
+    const item = document.createElement("span");
+    item.className = "legend-item";
+
+    const swatch = document.createElement("span");
+    swatch.className = "legend-swatch";
+    swatch.style.background = colorMap.get(type);
+
+    const label = document.createElement("span");
+    label.textContent = formatType(type);
+
+    item.append(swatch, label);
+    chartLegend.appendChild(item);
+  }
+}
+
+function getTypeColor(type) {
+  const palette = ["#1a7f64", "#d26a32", "#2b6cb0", "#b44a2f", "#7b5cc7", "#c2872f", "#008b8b", "#b83280"];
+  let hash = 0;
+  for (const char of type || "_") {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return palette[hash % palette.length];
+}
+
+function formatType(type) {
+  return type || "未分類";
 }
