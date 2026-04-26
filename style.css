@@ -179,9 +179,32 @@ button[type="submit"] {
 
 .footer-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 12px;
-  margin-top: 12px;
+  margin: 24px 0 8px;
+}
+
+.footer-actions button {
+  min-width: 140px;
+  box-shadow: 0 16px 30px rgba(56, 44, 20, 0.18);
+}
+
+.floating-reset {
+  display: block;
+}
+
+.page-footer {
+  padding: 28px 0 32px;
+  text-align: center;
+}
+
+.page-footer a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.page-footer a:hover {
+  text-decoration: underline;
 }
 
 .floating-reset {
