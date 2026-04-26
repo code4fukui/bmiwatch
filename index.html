@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Sum</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <p class="eyebrow">Daily Sum</p>
+      <h1>入力時刻つきで量を記録</h1>
+      <p class="lead">記録した時刻をそのまま保存し、今日の合計と日別グラフをすぐ確認できます。</p>
+    </section>
+
+    <section class="panel">
+      <form id="record-form" class="form">
+        <label class="amount-field">
+          <span>量</span>
+          <input id="amount-input" name="amount" type="number" min="0" step="0.1" inputmode="decimal" placeholder="0" required>
+        </label>
+        <div class="actions">
+          <button type="submit">保存</button>
+        </div>
+        <div class="shortcut-block">
+          <div id="recent-shortcuts" class="shortcut-list"></div>
+          <p id="shortcut-empty" class="shortcut-empty">記録が増えるとここにショートカットが出ます。</p>
+        </div>
+      </form>
+    </section>
+
+    <section class="stats">
+      <article class="card hero-card">
+        <span class="label">今日の合計量</span>
+        <strong id="today-total">0</strong>
+        <small id="today-count" class="subvalue">0件の記録</small>
+      </article>
+      <article class="card">
+        <span class="label">最新の記録</span>
+        <strong id="latest-value">-</strong>
+      </article>
+      <article class="card">
+        <span class="label">記録日数</span>
+        <strong id="record-days">0</strong>
+      </article>
+    </section>
+
+    <section class="panel chart-panel">
+      <div class="section-head">
+        <h2>グラフ</h2>
+      </div>
+      <svg id="chart" viewBox="0 0 640 320" role="img" aria-label="累積量の推移グラフ"></svg>
+      <p id="chart-empty" class="empty">記録を追加するとグラフが表示されます。</p>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>履歴</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>日時</th>
+              <th>量</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="records-body"></tbody>
+        </table>
+      </div>
+      <p id="history-empty" class="empty">まだ記録がありません。</p>
+    </section>
+  </main>
+
+  <template id="record-row-template">
+    <tr>
+      <td class="time-cell"></td>
+      <td class="amount-cell"></td>
+      <td class="row-action">
+        <button type="button" class="icon-button delete-button">削除</button>
+      </td>
+    </tr>
+  </template>
+
+  <button type="button" id="reset-button" class="floating-reset secondary">全削除</button>
+
+  <script src="main.js"></script>
+</body>
+</html>
