@@ -1,5 +1,7 @@
 # dailysum
 
+[日本語](README.ja.md)
+
 A small web app for recording an amount and free-text type with timestamps, showing today's total, daily charts, recent shortcuts, and CSV export.
 
 Live demo:
