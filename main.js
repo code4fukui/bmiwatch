@@ -247,6 +247,11 @@ function renderChart(dailyTotals) {
     ${bars.map((bar) => `<rect class="chart-bar" x="${bar.x}" y="${bar.y}" width="${bar.width}" height="${bar.height}" fill="${bar.fill}"></rect>`).join("")}
     ${dailyTotals.map((point, index) => {
       const centerX = padding.left + step * index + step / 2;
+      const topY = padding.top + innerHeight - (point.total / range) * innerHeight;
+      return `<text class="axis-total-label" x="${centerX}" y="${Math.max(padding.top - 6, topY - 8)}" text-anchor="middle">${trimNumber(point.total)}</text>`;
+    }).join("")}
+    ${dailyTotals.map((point, index) => {
+      const centerX = padding.left + step * index + step / 2;
       return `
         <text class="axis-label" x="${centerX}" y="${height - 30}" text-anchor="middle">${shortDate(point.date)}</text>
         <text class="axis-sub-label" x="${centerX}" y="${height - 12}" text-anchor="middle">${point.count}件</text>

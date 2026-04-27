@@ -298,6 +298,12 @@ button[type="submit"] {
   font-size: 11px;
 }
 
+.axis-total-label {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 #chart {
   width: 100%;
   height: auto;
