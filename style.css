@@ -282,6 +282,11 @@ button[type="submit"] {
   flex: 0 0 auto;
 }
 
+.axis-sub-label {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
 #chart {
   width: 100%;
   height: auto;

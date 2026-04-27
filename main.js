@@ -198,7 +198,7 @@ function renderChart(dailyTotals) {
 
   const width = 640;
   const height = 320;
-  const padding = { top: 24, right: 24, bottom: 40, left: 56 };
+  const padding = { top: 24, right: 24, bottom: 58, left: 56 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
   const maxAmount = Math.max(...dailyTotals.map((record) => record.total), 1);
@@ -247,7 +247,10 @@ function renderChart(dailyTotals) {
     ${bars.map((bar) => `<rect class="chart-bar" x="${bar.x}" y="${bar.y}" width="${bar.width}" height="${bar.height}" fill="${bar.fill}"></rect>`).join("")}
     ${dailyTotals.map((point, index) => {
       const centerX = padding.left + step * index + step / 2;
-      return `<text class="axis-label" x="${centerX}" y="${height - 14}" text-anchor="middle">${shortDate(point.date)}</text>`;
+      return `
+        <text class="axis-label" x="${centerX}" y="${height - 30}" text-anchor="middle">${shortDate(point.date)}</text>
+        <text class="axis-sub-label" x="${centerX}" y="${height - 12}" text-anchor="middle">${point.count}件</text>
+      `;
     }).join("")}
   `;
 }
@@ -258,14 +261,15 @@ function aggregateDailyTotals(source) {
   for (const record of source) {
     const date = getLocalDateKey(new Date(record.timestamp));
     const type = record.type || "";
-    const daily = totals.get(date) ?? { total: 0, types: {} };
+    const daily = totals.get(date) ?? { total: 0, count: 0, types: {} };
     daily.total += record.amount;
+    daily.count += 1;
     daily.types[type] = (daily.types[type] ?? 0) + record.amount;
     totals.set(date, daily);
   }
 
   return [...totals.entries()]
-    .map(([date, summary]) => ({ date, total: summary.total, types: summary.types }))
+    .map(([date, summary]) => ({ date, total: summary.total, count: summary.count, types: summary.types }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
