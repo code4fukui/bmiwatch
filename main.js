@@ -3,6 +3,8 @@ const STORAGE_KEY = "daily-sum-records";
 const form = document.getElementById("record-form");
 const typeInput = document.getElementById("type-input");
 const amountInput = document.getElementById("amount-input");
+const importButton = document.getElementById("import-button");
+const importFileInput = document.getElementById("import-file-input");
 const exportButton = document.getElementById("export-button");
 const resetButton = document.getElementById("reset-button");
 const recentShortcuts = document.getElementById("recent-shortcuts");
@@ -70,6 +72,45 @@ exportButton.addEventListener("click", () => {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+});
+
+importButton.addEventListener("click", () => {
+  importFileInput.click();
+});
+
+importFileInput.addEventListener("change", async () => {
+  const [file] = importFileInput.files || [];
+  if (!file) {
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    const imported = parseCsvRecords(text);
+    if (!imported.length) {
+      window.alert("読み込める記録がありませんでした。");
+      return;
+    }
+
+    const merged = [...records];
+    for (const record of imported) {
+      merged.push({
+        id: createRecordId(),
+        timestamp: record.timestamp,
+        type: record.type,
+        amount: record.amount,
+      });
+    }
+
+    records = merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    persistRecords();
+    render();
+    window.alert(`${imported.length}件の記録を読み込みました。`);
+  } catch {
+    window.alert("CSVの読み込みに失敗しました。");
+  } finally {
+    importFileInput.value = "";
+  }
 });
 
 function loadRecords() {
@@ -539,7 +580,108 @@ function escapeCsvCell(value) {
   if (!/[",\r\n]/.test(text)) {
     return text;
   }
-  return `"${text.replaceAll("\"", "\"\"")}"`;
+  return `"${text.split("\"").join("\"\"")}"`;
+}
+
+function parseCsvRecords(text) {
+  const normalized = text.replace(/^\uFEFF/, "");
+  const rows = parseCsvRows(normalized);
+  if (rows.length <= 1) {
+    return [];
+  }
+
+  return rows
+    .slice(1)
+    .map((row) => normalizeImportedRow(row))
+    .filter(Boolean);
+}
+
+function parseCsvRows(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (inQuotes) {
+      if (char === "\"" && next === "\"") {
+        cell += "\"";
+        index += 1;
+      } else if (char === "\"") {
+        inQuotes = false;
+      } else {
+        cell += char;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (char === "\n") {
+      row.push(cell.replace(/\r$/, ""));
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+
+  if (cell || row.length) {
+    row.push(cell.replace(/\r$/, ""));
+    rows.push(row);
+  }
+
+  return rows.filter((currentRow) => currentRow.some((value) => value !== ""));
+}
+
+function normalizeImportedRow(row) {
+  const timestampText = row[0];
+  const type = row[2] || "";
+  const amount = Number(row[3]);
+
+  if (!timestampText || Number.isNaN(amount)) {
+    return null;
+  }
+
+  const timestamp = parseJaTimestamp(timestampText);
+  if (!timestamp) {
+    return null;
+  }
+
+  return {
+    timestamp,
+    type,
+    amount,
+  };
+}
+
+function parseJaTimestamp(text) {
+  const value = String(text).trim();
+  const match = value.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})$/)
+    || value.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const date = new Date(year, month, day, hour, minute, 0, 0);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString();
 }
 
 function formatShortcut(record) {

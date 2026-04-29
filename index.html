@@ -96,9 +96,11 @@
   </template>
 
   <div class="footer-actions">
+    <button type="button" id="import-button" class="secondary">CSVインポート</button>
     <button type="button" id="export-button" class="secondary">CSVエクスポート</button>
     <button type="button" id="reset-button" class="floating-reset secondary">全削除</button>
   </div>
+  <input id="import-file-input" type="file" accept=".csv,text/csv" hidden>
 
   <footer class="page-footer">
     <a href="https://github.com/code4fukui/dailysum" target="_blank" rel="noreferrer">src on GitHub</a>
