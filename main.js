@@ -12,7 +12,9 @@ const todayCount = document.getElementById("today-count");
 const latestValue = document.getElementById("latest-value");
 const recordDays = document.getElementById("record-days");
 const chartLegend = document.getElementById("chart-legend");
+const weekChartLegend = document.getElementById("week-chart-legend");
 const chart = document.getElementById("chart");
+const weekChart = document.getElementById("week-chart");
 const chartEmpty = document.getElementById("chart-empty");
 const recordsBody = document.getElementById("records-body");
 const historyEmpty = document.getElementById("history-empty");
@@ -97,10 +99,12 @@ function persistRecords() {
 
 function render() {
   const dailyTotals = aggregateDailyTotals(records);
+  const recentWeekSeries = buildRecentWeekSeries(records);
   renderStats();
   renderShortcuts();
   renderTable();
   renderChart(dailyTotals);
+  renderWeekChart(recentWeekSeries);
 }
 
 function renderStats() {
@@ -260,6 +264,52 @@ function renderChart(dailyTotals) {
   `;
 }
 
+function renderWeekChart(weekSeries) {
+  if (!weekSeries.length) {
+    weekChartLegend.textContent = "";
+    weekChart.innerHTML = "";
+    weekChart.style.display = "none";
+    return;
+  }
+
+  weekChart.style.display = "block";
+
+  const width = 640;
+  const height = 280;
+  const padding = { top: 24, right: 24, bottom: 54, left: 56 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  const maxAmount = Math.max(...weekSeries.flatMap((series) => series.points.map((point) => point.amount)), 1);
+
+  const yLabels = Array.from({ length: 4 }, (_, index) => {
+    const value = (maxAmount * (3 - index)) / 3;
+    const y = padding.top + (innerHeight * index) / 3;
+    return { value, y };
+  });
+
+  const xLabels = [0, 6, 12, 18, 24].map((hour) => {
+    const x = padding.left + (innerWidth * hour) / 24;
+    return { hour, x };
+  });
+
+  renderWeekChartLegend(weekSeries);
+
+  weekChart.innerHTML = `
+    ${yLabels.map(({ y }) => `<line class="grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`).join("")}
+    ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${trimNumber(value)}</text>`).join("")}
+    ${xLabels.map(({ x }) => `<line class="grid-line" x1="${x}" y1="${padding.top}" x2="${x}" y2="${padding.top + innerHeight}"></line>`).join("")}
+    ${weekSeries.map((series) => {
+      const path = series.points.map((point, index) => {
+        const x = padding.left + (innerWidth * point.hour) / 24;
+        const y = padding.top + innerHeight - (point.amount / maxAmount) * innerHeight;
+        return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+      }).join(" ");
+      return `<path class="week-line ${series.isToday ? "today" : "past"}" d="${path}" stroke="${series.color}" opacity="${series.opacity}"></path>`;
+    }).join("")}
+    ${xLabels.map(({ hour, x }) => `<text class="axis-label" x="${x}" y="${height - 12}" text-anchor="middle">${hour}</text>`).join("")}
+  `;
+}
+
 function aggregateDailyTotals(source) {
   const totals = new Map();
 
@@ -276,6 +326,50 @@ function aggregateDailyTotals(source) {
   return [...totals.entries()]
     .map(([date, summary]) => ({ date, total: summary.total, count: summary.count, types: summary.types }))
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function buildRecentWeekSeries(source) {
+  if (!source.length) {
+    return [];
+  }
+
+  const series = [];
+  const today = new Date();
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const date = new Date(today);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - offset);
+    const key = getLocalDateKey(date);
+    const recordsInDay = source
+      .filter((record) => getLocalDateKey(new Date(record.timestamp)) === key)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    let accumulated = 0;
+    const points = [{ hour: 0, amount: 0 }];
+
+    for (const record of recordsInDay) {
+      const time = new Date(record.timestamp);
+      accumulated += record.amount;
+      points.push({
+        hour: time.getHours() + time.getMinutes() / 60 + time.getSeconds() / 3600,
+        amount: accumulated,
+      });
+    }
+
+    points.push({ hour: 24, amount: accumulated });
+    const opacity = offset === 0 ? 1 : 0.16 + ((6 - offset) / 5) * 0.34;
+    series.push({
+      date: key,
+      isToday: offset === 0,
+      color: offset === 0 ? "#1a7f64" : "#7ba99c",
+      opacity,
+      count: recordsInDay.length,
+      total: accumulated,
+      points,
+    });
+  }
+
+  return series;
 }
 
 function normalizeRecord(item) {
@@ -483,6 +577,26 @@ function renderChartLegend(types, colorMap) {
 
     item.append(swatch, label);
     chartLegend.appendChild(item);
+  }
+}
+
+function renderWeekChartLegend(weekSeries) {
+  weekChartLegend.textContent = "";
+
+  for (const series of weekSeries) {
+    const item = document.createElement("span");
+    item.className = "legend-item";
+
+    const swatch = document.createElement("span");
+    swatch.className = "legend-swatch";
+    swatch.style.background = series.color;
+    swatch.style.opacity = String(series.opacity);
+
+    const label = document.createElement("span");
+    label.textContent = `${shortDate(series.date)}${series.isToday ? " 今日" : ""}`;
+
+    item.append(swatch, label);
+    weekChartLegend.appendChild(item);
   }
 }
 
