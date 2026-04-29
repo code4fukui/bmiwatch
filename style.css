@@ -295,6 +295,12 @@ button[type="submit"] {
   gap: 8px;
   color: var(--muted);
   font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.legend-item.is-active {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .legend-swatch {
@@ -328,6 +334,10 @@ button[type="submit"] {
 
 .week-line.today {
   stroke-width: 3;
+}
+
+.week-line.is-selected {
+  stroke-width: 4;
 }
 
 #chart,

@@ -24,6 +24,7 @@ const rowTemplate = document.getElementById("record-row-template");
 
 let records = loadRecords();
 let editingRecordId = null;
+let highlightedWeekDate = getRelativeDateKey(-1);
 
 render();
 
@@ -288,7 +289,7 @@ function renderChart(dailyTotals) {
 
   chart.innerHTML = `
     ${yLabels.map(({ y }) => `<line class="grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`).join("")}
-    ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${trimNumber(value)}</text>`).join("")}
+    ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${formatAxisValue(value)}</text>`).join("")}
     ${bars.map((bar) => `<rect class="chart-bar" x="${bar.x}" y="${bar.y}" width="${bar.width}" height="${bar.height}" fill="${bar.fill}"></rect>`).join("")}
     ${dailyTotals.map((point, index) => {
       const centerX = padding.left + step * index + step / 2;
@@ -337,15 +338,26 @@ function renderWeekChart(weekSeries) {
 
   weekChart.innerHTML = `
     ${yLabels.map(({ y }) => `<line class="grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`).join("")}
-    ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${trimNumber(value)}</text>`).join("")}
+    ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${formatAxisValue(value)}</text>`).join("")}
     ${xLabels.map(({ x }) => `<line class="grid-line" x1="${x}" y1="${padding.top}" x2="${x}" y2="${padding.top + innerHeight}"></line>`).join("")}
     ${weekSeries.map((series) => {
+      const isSelected = highlightedWeekDate === series.date;
+      const strokeOpacity = series.isToday ? 1 : (isSelected ? 0.7 : series.opacity);
+      const strokeColor = isSelected && !series.isToday ? "#d26a32" : series.color;
       const path = series.points.map((point, index) => {
         const x = padding.left + (innerWidth * point.hour) / 24;
         const y = padding.top + innerHeight - (point.amount / maxAmount) * innerHeight;
-        return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+
+        if (index === 0) {
+          return `M ${x} ${y}`;
+        }
+
+        const previous = series.points[index - 1];
+        const previousX = padding.left + (innerWidth * previous.hour) / 24;
+        const previousY = padding.top + innerHeight - (previous.amount / maxAmount) * innerHeight;
+        return `L ${x} ${previousY} L ${x} ${y}`;
       }).join(" ");
-      return `<path class="week-line ${series.isToday ? "today" : "past"}" d="${path}" stroke="${series.color}" opacity="${series.opacity}"></path>`;
+      return `<path class="week-line ${series.isToday ? "today" : "past"} ${isSelected ? "is-selected" : ""}" d="${path}" stroke="${strokeColor}" opacity="${strokeOpacity}" data-date="${series.date}"></path>`;
     }).join("")}
     ${xLabels.map(({ hour, x }) => `<text class="axis-label" x="${x}" y="${height - 12}" text-anchor="middle">${hour}</text>`).join("")}
   `;
@@ -443,6 +455,10 @@ function formatAmount(value) {
   return trimNumber(value);
 }
 
+function formatAxisValue(value) {
+  return Math.round(value).toLocaleString("ja-JP");
+}
+
 function trimNumber(value) {
   return Number(value).toLocaleString("ja-JP", {
     maximumFractionDigits: 2,
@@ -479,6 +495,13 @@ function getLocalDateKey(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getRelativeDateKey(offsetDays) {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + offsetDays);
+  return getLocalDateKey(date);
 }
 
 function createRecordId() {
@@ -731,15 +754,26 @@ function renderWeekChartLegend(weekSeries) {
 
     const swatch = document.createElement("span");
     swatch.className = "legend-swatch";
-    swatch.style.background = series.color;
-    swatch.style.opacity = String(series.opacity);
+    swatch.style.background = highlightedWeekDate === series.date && !series.isToday ? "#d26a32" : series.color;
+    swatch.style.opacity = String(series.isToday ? 1 : (highlightedWeekDate === series.date ? 0.7 : series.opacity));
 
     const label = document.createElement("span");
     label.textContent = `${shortDate(series.date)}${series.isToday ? " 今日" : ""}`;
+    if (highlightedWeekDate === series.date) {
+      item.classList.add("is-active");
+    }
 
     item.append(swatch, label);
+    item.addEventListener("click", () => {
+      toggleWeekHighlight(series.date);
+    });
     weekChartLegend.appendChild(item);
   }
+}
+
+function toggleWeekHighlight(date) {
+  highlightedWeekDate = highlightedWeekDate === date ? null : date;
+  renderWeekChart(buildRecentWeekSeries(records));
 }
 
 function getTypeColor(type) {
