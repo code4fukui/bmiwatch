@@ -2,7 +2,6 @@ const STORAGE_KEY = "bmiwatch-records";
 const SETTINGS_KEY = "bmiwatch-settings";
 const STANDARD_BMI_LOWER = 18.5;
 const STANDARD_BMI_UPPER = 25;
-const DEFAULT_TARGET_BMI = 22;
 
 const form = document.getElementById("record-form");
 const weightInput = document.getElementById("weight-input");
@@ -374,13 +373,13 @@ function resolveTargetBmi(weightKg, heightCm) {
   }
 
   const bmi = calcBmiWithHeight(weightKg, heightCm);
-  if (!records.length && bmi > STANDARD_BMI_UPPER) {
+  if (bmi > STANDARD_BMI_UPPER) {
     return STANDARD_BMI_UPPER;
   }
   if (bmi < STANDARD_BMI_LOWER) {
     return STANDARD_BMI_LOWER;
   }
-  return DEFAULT_TARGET_BMI;
+  return roundBmi(bmi);
 }
 
 function updateInitialTargetBmi() {
@@ -397,12 +396,20 @@ function updateInitialTargetBmi() {
   const bmi = calcBmiWithHeight(weightKg, heightCm);
   if (bmi > STANDARD_BMI_UPPER) {
     targetBmiInput.value = trimNumber(STANDARD_BMI_UPPER);
+  } else if (bmi < STANDARD_BMI_LOWER) {
+    targetBmiInput.value = trimNumber(STANDARD_BMI_LOWER);
+  } else {
+    targetBmiInput.value = trimNumber(roundBmi(bmi));
   }
 }
 
 function calcBmiWithHeight(weightKg, heightCm) {
   const heightM = heightCm / 100;
   return weightKg / (heightM * heightM);
+}
+
+function roundBmi(value) {
+  return Math.round(value * 10) / 10;
 }
 
 function isValidWeight(value) {

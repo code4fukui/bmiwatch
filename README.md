@@ -11,7 +11,7 @@ https://code4fukui.github.io/bmiwatch/
 
 - Record body weight with the current timestamp
 - Save height and target BMI in `localStorage`
-- Auto-set the first target BMI to the standard upper limit of 25.0 when the first BMI is above that range
+- Auto-set the target BMI from the entered weight and height when the target field is empty
 - Calculate current BMI, target weight, and remaining weight difference
 - Show a weight trend chart with target weight and standard BMI lower/upper guide lines
 - Edit record timestamps and delete records
