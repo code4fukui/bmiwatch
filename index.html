@@ -26,6 +26,12 @@
           <span>体重 kg</span>
           <input id="weight-input" name="weight" type="number" min="1" max="300" step="0.1" inputmode="decimal" required>
         </label>
+        <div class="weight-steppers" aria-label="体重を調整">
+          <button type="button" class="step-button" data-weight-step="0.5">+0.5</button>
+          <button type="button" class="step-button" data-weight-step="0.1">+0.1</button>
+          <button type="button" class="step-button" data-weight-step="-0.1">-0.1</button>
+          <button type="button" class="step-button" data-weight-step="-0.5">-0.5</button>
+        </div>
         <label>
           <span>身長 cm</span>
           <input id="height-input" name="height" type="number" min="80" max="250" step="0.1" inputmode="decimal" required>
@@ -114,6 +120,7 @@ const STANDARD_BMI_UPPER = 25;
 
 const form = document.getElementById("record-form");
 const weightInput = document.getElementById("weight-input");
+const weightStepButtons = document.querySelectorAll("[data-weight-step]");
 const heightInput = document.getElementById("height-input");
 const importButton = document.getElementById("import-button");
 const importFileInput = document.getElementById("import-file-input");
@@ -160,6 +167,12 @@ form.addEventListener("submit", (event) => {
 });
 
 heightInput.addEventListener("change", updateSettingsFromInputs);
+
+for (const button of weightStepButtons) {
+  button.addEventListener("click", () => {
+    adjustWeight(Number(button.dataset.weightStep));
+  });
+}
 
 resetButton.addEventListener("click", () => {
   if (!records.length) {
@@ -438,6 +451,20 @@ function addRecord(weightKg) {
   records.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   persistRecords();
   render();
+}
+
+function adjustWeight(step) {
+  if (!Number.isFinite(step)) {
+    return;
+  }
+
+  const currentWeight = Number(weightInput.value);
+  const baseWeight = Number.isFinite(currentWeight) && currentWeight > 0
+    ? currentWeight
+    : records.at(-1)?.weightKg ?? 0;
+  const nextWeight = Math.min(300, Math.max(1, Math.round((baseWeight + step) * 10) / 10));
+  weightInput.value = trimNumber(nextWeight);
+  weightInput.focus();
 }
 
 function calcBmi(weightKg) {
