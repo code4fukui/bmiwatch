@@ -1,5 +1,8 @@
 const STORAGE_KEY = "bmiwatch-records";
 const SETTINGS_KEY = "bmiwatch-settings";
+const STANDARD_BMI_LOWER = 18.5;
+const STANDARD_BMI_UPPER = 25;
+const DEFAULT_TARGET_BMI = 22;
 
 const form = document.getElementById("record-form");
 const weightInput = document.getElementById("weight-input");
@@ -25,7 +28,7 @@ let records = loadRecords();
 let editingRecordId = null;
 
 heightInput.value = settings.heightCm ? trimNumber(settings.heightCm) : "";
-targetBmiInput.value = settings.targetBmi ? trimNumber(settings.targetBmi) : "22";
+targetBmiInput.value = settings.targetBmi ? trimNumber(settings.targetBmi) : "";
 if (records.length) {
   weightInput.value = trimNumber(records.at(-1).weightKg);
 }
@@ -37,18 +40,21 @@ form.addEventListener("submit", (event) => {
 
   const weightKg = Number(weightInput.value);
   const heightCm = Number(heightInput.value);
-  const targetBmi = Number(targetBmiInput.value);
+  const targetBmi = resolveTargetBmi(weightKg, heightCm);
 
   if (!isValidWeight(weightKg) || !isValidHeight(heightCm) || !isValidBmi(targetBmi)) {
     return;
   }
 
   settings = { heightCm, targetBmi };
+  targetBmiInput.value = trimNumber(targetBmi);
   persistSettings();
   addRecord(weightKg);
   weightInput.select();
 });
 
+weightInput.addEventListener("input", updateInitialTargetBmi);
+heightInput.addEventListener("input", updateInitialTargetBmi);
 heightInput.addEventListener("change", updateSettingsFromInputs);
 targetBmiInput.addEventListener("change", updateSettingsFromInputs);
 
@@ -117,7 +123,7 @@ importFileInput.addEventListener("change", async () => {
 function loadSettings() {
   const raw = window.localStorage.getItem(SETTINGS_KEY);
   if (!raw) {
-    return { heightCm: null, targetBmi: 22 };
+    return { heightCm: null, targetBmi: null };
   }
 
   try {
@@ -126,10 +132,10 @@ function loadSettings() {
     const targetBmi = Number(parsed?.targetBmi);
     return {
       heightCm: isValidHeight(heightCm) ? heightCm : null,
-      targetBmi: isValidBmi(targetBmi) ? targetBmi : 22,
+      targetBmi: isValidBmi(targetBmi) ? targetBmi : null,
     };
   } catch {
-    return { heightCm: null, targetBmi: 22 };
+    return { heightCm: null, targetBmi: null };
   }
 }
 
@@ -165,7 +171,16 @@ function persistRecords() {
 function updateSettingsFromInputs() {
   const heightCm = Number(heightInput.value);
   const targetBmi = Number(targetBmiInput.value);
-  if (!isValidHeight(heightCm) || !isValidBmi(targetBmi)) {
+  if (!isValidHeight(heightCm)) {
+    return;
+  }
+  if (targetBmiInput.value.trim() === "") {
+    settings = { heightCm, targetBmi: null };
+    persistSettings();
+    render();
+    return;
+  }
+  if (!isValidBmi(targetBmi)) {
     return;
   }
 
@@ -182,7 +197,7 @@ function render() {
 
 function renderStats() {
   const latest = records.at(-1);
-  const targetKg = getTargetWeight();
+  const targetKg = getTargetWeight(settings.targetBmi);
 
   currentBmi.textContent = latest && settings.heightCm ? formatBmi(calcBmi(latest.weightKg)) : "-";
   latestWeight.textContent = latest ? `${formatWeight(latest.weightKg)} / ${formatDateTime(latest.timestamp)}` : "まだ記録がありません";
@@ -197,7 +212,7 @@ function renderTable() {
   for (const record of [...records].reverse()) {
     const row = rowTemplate.content.firstElementChild.cloneNode(true);
     const timeCell = row.querySelector(".time-cell");
-    const targetKg = getTargetWeight();
+    const targetKg = getTargetWeight(settings.targetBmi);
 
     row.querySelector(".weight-cell").textContent = formatWeight(record.weightKg);
     row.querySelector(".bmi-cell").textContent = settings.heightCm ? formatBmi(calcBmi(record.weightKg)) : "-";
@@ -245,20 +260,30 @@ function renderChart(source) {
 
   chart.style.display = "block";
   chartEmpty.style.display = "none";
-  chartLegend.innerHTML = `
-    <span class="legend-item"><span class="legend-swatch weight-swatch"></span><span>体重</span></span>
-    <span class="legend-item"><span class="legend-swatch target-swatch"></span><span>目標体重</span></span>
-  `;
-
   const width = 640;
   const height = 320;
   const padding = { top: 24, right: 24, bottom: 58, left: 56 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
-  const targetKg = getTargetWeight();
+  const targetKg = getTargetWeight(settings.targetBmi);
+  const standardLowerKg = getTargetWeight(STANDARD_BMI_LOWER);
+  const standardUpperKg = getTargetWeight(STANDARD_BMI_UPPER);
+  const targetIsStandardLower = settings.targetBmi === STANDARD_BMI_LOWER;
+  const targetIsStandardUpper = settings.targetBmi === STANDARD_BMI_UPPER;
+  const showTargetLine = targetKg && !targetIsStandardLower && !targetIsStandardUpper;
+  chartLegend.innerHTML = `
+    <span class="legend-item"><span class="legend-swatch weight-swatch"></span><span>体重</span></span>
+    ${showTargetLine ? `<span class="legend-item"><span class="legend-swatch target-swatch"></span><span>目標体重</span></span>` : ""}
+    <span class="legend-item"><span class="legend-swatch standard-lower-swatch"></span><span>${targetIsStandardLower ? "標準下限/目標" : "標準下限"}</span></span>
+    <span class="legend-item"><span class="legend-swatch standard-upper-swatch"></span><span>${targetIsStandardUpper ? "標準上限/目標" : "標準上限"}</span></span>
+  `;
   const weights = source.map((record) => record.weightKg);
-  const minWeight = Math.min(...weights, targetKg);
-  const maxWeight = Math.max(...weights, targetKg);
+  const guideWeights = [standardLowerKg, standardUpperKg];
+  if (targetKg) {
+    guideWeights.push(targetKg);
+  }
+  const minWeight = Math.min(...weights, ...guideWeights);
+  const maxWeight = Math.max(...weights, ...guideWeights);
   const margin = Math.max(2, (maxWeight - minWeight) * 0.18);
   const minY = Math.floor((minWeight - margin) * 10) / 10;
   const maxY = Math.ceil((maxWeight + margin) * 10) / 10;
@@ -277,14 +302,20 @@ function renderChart(source) {
     const y = padding.top + (innerHeight * index) / 3;
     return { value, y };
   });
-  const targetY = yForWeight(targetKg);
+  const targetY = targetKg ? yForWeight(targetKg) : null;
+  const standardLowerY = yForWeight(standardLowerKg);
+  const standardUpperY = yForWeight(standardUpperKg);
   const path = points.map((point, index) => `${index ? "L" : "M"} ${point.x} ${point.y}`).join(" ");
 
   chart.innerHTML = `
     ${yLabels.map(({ y }) => `<line class="grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`).join("")}
     ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${formatWeightNumber(value)}</text>`).join("")}
-    <line class="target-line" x1="${padding.left}" y1="${targetY}" x2="${width - padding.right}" y2="${targetY}"></line>
-    <text class="target-label" x="${width - padding.right}" y="${Math.max(14, targetY - 8)}" text-anchor="end">${formatWeight(targetKg)}</text>
+    <line class="standard-line standard-lower-line" x1="${padding.left}" y1="${standardLowerY}" x2="${width - padding.right}" y2="${standardLowerY}"></line>
+    <text class="standard-label" x="${width - padding.right}" y="${Math.max(14, standardLowerY - 8)}" text-anchor="end">${targetIsStandardLower ? "下限/目標" : "下限"} ${formatWeight(standardLowerKg)}</text>
+    <line class="standard-line standard-upper-line" x1="${padding.left}" y1="${standardUpperY}" x2="${width - padding.right}" y2="${standardUpperY}"></line>
+    <text class="standard-label" x="${width - padding.right}" y="${Math.max(14, standardUpperY - 8)}" text-anchor="end">${targetIsStandardUpper ? "上限/目標" : "上限"} ${formatWeight(standardUpperKg)}</text>
+    ${showTargetLine ? `<line class="target-line" x1="${padding.left}" y1="${targetY}" x2="${width - padding.right}" y2="${targetY}"></line>` : ""}
+    ${showTargetLine ? `<text class="target-label" x="${width - padding.right}" y="${Math.max(14, targetY - 8)}" text-anchor="end">目標 ${formatWeight(targetKg)}</text>` : ""}
     <path class="weight-line" d="${path}"></path>
     ${points.map(({ x, y }) => `<circle class="weight-point" cx="${x}" cy="${y}" r="4"></circle>`).join("")}
     ${source.map((record, index) => {
@@ -327,12 +358,53 @@ function calcBmi(weightKg) {
   return weightKg / (heightM * heightM);
 }
 
-function getTargetWeight() {
-  if (!settings.heightCm || !settings.targetBmi) {
+function getTargetWeight(bmi) {
+  if (!settings.heightCm || !bmi) {
     return null;
   }
   const heightM = settings.heightCm / 100;
-  return settings.targetBmi * heightM * heightM;
+  return bmi * heightM * heightM;
+}
+
+function resolveTargetBmi(weightKg, heightCm) {
+  const enteredTargetBmi = Number(targetBmiInput.value);
+  if (targetBmiInput.value.trim() !== "" && isValidBmi(enteredTargetBmi)) {
+    return enteredTargetBmi;
+  }
+  if (!isValidWeight(weightKg) || !isValidHeight(heightCm)) {
+    return null;
+  }
+
+  const bmi = calcBmiWithHeight(weightKg, heightCm);
+  if (!records.length && bmi > STANDARD_BMI_UPPER) {
+    return STANDARD_BMI_UPPER;
+  }
+  if (bmi < STANDARD_BMI_LOWER) {
+    return STANDARD_BMI_LOWER;
+  }
+  return DEFAULT_TARGET_BMI;
+}
+
+function updateInitialTargetBmi() {
+  if (records.length || targetBmiInput.value.trim() !== "") {
+    return;
+  }
+
+  const weightKg = Number(weightInput.value);
+  const heightCm = Number(heightInput.value);
+  if (!isValidWeight(weightKg) || !isValidHeight(heightCm)) {
+    return;
+  }
+
+  const bmi = calcBmiWithHeight(weightKg, heightCm);
+  if (bmi > STANDARD_BMI_UPPER) {
+    targetBmiInput.value = trimNumber(STANDARD_BMI_UPPER);
+  }
+}
+
+function calcBmiWithHeight(weightKg, heightCm) {
+  const heightM = heightCm / 100;
+  return weightKg / (heightM * heightM);
 }
 
 function isValidWeight(value) {
@@ -413,7 +485,7 @@ function buildCsv(source) {
   const rows = [
     ["日時", "日付", "体重kg", "BMI", "身長cm", "目標BMI", "目標体重kg", "目標差kg"],
     ...source.map((record) => {
-      const targetKg = getTargetWeight();
+      const targetKg = getTargetWeight(settings.targetBmi);
       return [
         formatDateTime(record.timestamp),
         getLocalDateKey(new Date(record.timestamp)),

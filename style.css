@@ -233,6 +233,14 @@ button[type="submit"] {
   background: var(--target);
 }
 
+.standard-lower-swatch {
+  background: #6f8fbf;
+}
+
+.standard-upper-swatch {
+  background: #9a8f3e;
+}
+
 #chart {
   width: 100%;
   height: auto;
@@ -346,6 +354,25 @@ td:last-child {
 
 .target-label {
   fill: var(--target);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.standard-line {
+  stroke-width: 2;
+  stroke-dasharray: 3 5;
+}
+
+.standard-lower-line {
+  stroke: #6f8fbf;
+}
+
+.standard-upper-line {
+  stroke: #9a8f3e;
+}
+
+.standard-label {
+  fill: var(--muted);
   font-size: 12px;
   font-weight: 700;
 }
