@@ -21,6 +21,8 @@ https://code4fukui.github.io/bmiwatch/
 
 - `index.html` - app structure and logic
 - `style.css` - UI styles
+- `manifest.json` - web app settings for home screen installation
+- `favicon.png`, `icons/` - app icons
 
 ## Usage
 

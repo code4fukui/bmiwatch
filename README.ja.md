@@ -28,6 +28,8 @@ https://code4fukui.github.io/bmiwatch/
 
 - `index.html` - 画面構造と記録処理、BMI計算、グラフ描画、CSV入出力
 - `style.css` - スタイル
+- `manifest.json` - ホーム画面追加用のWebアプリ設定
+- `favicon.png`, `icons/` - アプリアイコン
 
 ## ライセンス
 
