@@ -291,7 +291,7 @@ function renderChart(source) {
   const minY = Math.floor((minWeight - margin) * 10) / 10;
   const maxY = Math.ceil((maxWeight + margin) * 10) / 10;
   const range = Math.max(1, maxY - minY);
-  const startTime = getStartOfLocalDayTime(source[0].timestamp);
+  const startTime = new Date(source[0].timestamp).getTime();
   const endTime = new Date(source.at(-1).timestamp).getTime();
   const timeRange = Math.max(1, endTime - startTime);
   const yForWeight = (weightKg) => padding.top + innerHeight - ((weightKg - minY) / range) * innerHeight;
@@ -330,7 +330,7 @@ function renderChart(source) {
     ${source.map((record) => {
       const x = xForTime(record.timestamp);
       return `
-        <text class="axis-label" x="${x}" y="${height - 30}" text-anchor="middle">${formatElapsedTimeLabel(startTime, record.timestamp)}</text>
+        <text class="axis-label" x="${x}" y="${height - 30}" text-anchor="middle">${formatMonthDay(record.timestamp)}</text>
         <text class="axis-sub-label" x="${x}" y="${height - 12}" text-anchor="middle">${formatBmi(calcBmi(record.weightKg))}</text>
       `;
     }).join("")}
@@ -705,20 +705,9 @@ function formatDateTimeLocal(value) {
   return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
-function formatElapsedTimeLabel(startTime, timestamp) {
-  const elapsedMs = new Date(timestamp).getTime() - startTime;
-  const elapsedDays = elapsedMs / 86400000;
-  if (elapsedDays < 1) {
-    const elapsedHours = Math.round(elapsedMs / 3600000);
-    return `${elapsedHours}h`;
-  }
-  return `${Math.round(elapsedDays * 10) / 10}d`;
-}
-
-function getStartOfLocalDayTime(timestamp) {
+function formatMonthDay(timestamp) {
   const date = new Date(timestamp);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
+  return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 function getLocalDateKey(date) {
