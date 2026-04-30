@@ -187,6 +187,11 @@ function renderTable() {
     }
 
     row.querySelector(".delete-button").addEventListener("click", () => {
+      const confirmed = window.confirm("この記録を削除しますか？");
+      if (!confirmed) {
+        return;
+      }
+
       records = records.filter((entry) => entry.id !== record.id);
       if (editingRecordId === record.id) {
         editingRecordId = null;
