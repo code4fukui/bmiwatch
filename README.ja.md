@@ -26,9 +26,8 @@ https://code4fukui.github.io/bmiwatch/
 
 ## ファイル構成
 
-- `index.html` - 画面構造
+- `index.html` - 画面構造と記録処理、BMI計算、グラフ描画、CSV入出力
 - `style.css` - スタイル
-- `main.js` - 記録処理、BMI計算、グラフ描画、CSV入出力
 
 ## ライセンス
 

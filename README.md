@@ -19,9 +19,8 @@ https://code4fukui.github.io/bmiwatch/
 
 ## Files
 
-- `index.html` - app structure
+- `index.html` - app structure and logic
 - `style.css` - UI styles
-- `main.js` - app logic and `localStorage` handling
 
 ## Usage
 
