@@ -291,12 +291,18 @@ function renderChart(source) {
   const minY = Math.floor((minWeight - margin) * 10) / 10;
   const maxY = Math.ceil((maxWeight + margin) * 10) / 10;
   const range = Math.max(1, maxY - minY);
-  const step = source.length > 1 ? innerWidth / (source.length - 1) : innerWidth;
-
+  const startTime = getStartOfLocalDayTime(source[0].timestamp);
+  const endTime = new Date(source.at(-1).timestamp).getTime();
+  const timeRange = Math.max(1, endTime - startTime);
   const yForWeight = (weightKg) => padding.top + innerHeight - ((weightKg - minY) / range) * innerHeight;
-  const xForIndex = (index) => source.length > 1 ? padding.left + step * index : padding.left + innerWidth / 2;
-  const points = source.map((record, index) => ({
-    x: xForIndex(index),
+  const xForTime = (timestamp) => {
+    if (source.length === 1) {
+      return padding.left + innerWidth / 2;
+    }
+    return padding.left + ((new Date(timestamp).getTime() - startTime) / timeRange) * innerWidth;
+  };
+  const points = source.map((record) => ({
+    x: xForTime(record.timestamp),
     y: yForWeight(record.weightKg),
     record,
   }));
@@ -321,10 +327,10 @@ function renderChart(source) {
     ${showTargetLine ? `<text class="target-label" x="${width - padding.right}" y="${Math.max(14, targetY - 8)}" text-anchor="end">目標 ${formatWeight(targetKg)}</text>` : ""}
     <path class="weight-line" d="${path}"></path>
     ${points.map(({ x, y }) => `<circle class="weight-point" cx="${x}" cy="${y}" r="4"></circle>`).join("")}
-    ${source.map((record, index) => {
-      const x = xForIndex(index);
+    ${source.map((record) => {
+      const x = xForTime(record.timestamp);
       return `
-        <text class="axis-label" x="${x}" y="${height - 30}" text-anchor="middle">${shortDate(getLocalDateKey(new Date(record.timestamp)))}</text>
+        <text class="axis-label" x="${x}" y="${height - 30}" text-anchor="middle">${formatElapsedTimeLabel(startTime, record.timestamp)}</text>
         <text class="axis-sub-label" x="${x}" y="${height - 12}" text-anchor="middle">${formatBmi(calcBmi(record.weightKg))}</text>
       `;
     }).join("")}
@@ -699,9 +705,20 @@ function formatDateTimeLocal(value) {
   return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
-function shortDate(value) {
-  const [, month, day] = value.split("-");
-  return `${month}/${day}`;
+function formatElapsedTimeLabel(startTime, timestamp) {
+  const elapsedMs = new Date(timestamp).getTime() - startTime;
+  const elapsedDays = elapsedMs / 86400000;
+  if (elapsedDays < 1) {
+    const elapsedHours = Math.round(elapsedMs / 3600000);
+    return `${elapsedHours}h`;
+  }
+  return `${Math.round(elapsedDays * 10) / 10}d`;
+}
+
+function getStartOfLocalDayTime(timestamp) {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
 }
 
 function getLocalDateKey(date) {
