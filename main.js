@@ -27,11 +27,9 @@ let settings = loadSettings();
 let records = loadRecords();
 let editingRecordId = null;
 
-heightInput.value = settings.heightCm ? trimNumber(settings.heightCm) : "";
-targetBmiInput.value = settings.targetBmi ? trimNumber(settings.targetBmi) : "";
-if (records.length) {
-  weightInput.value = trimNumber(records.at(-1).weightKg);
-}
+weightInput.value = "";
+heightInput.value = "";
+targetBmiInput.value = "";
 
 render();
 
