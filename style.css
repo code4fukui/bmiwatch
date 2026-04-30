@@ -102,6 +102,7 @@ h1 {
   background: #e9f7e8;
   color: var(--accent-strong);
   font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
 }
 
 input {
@@ -130,6 +131,8 @@ button {
   border-radius: 999px;
   padding: 12px 18px;
   cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
   transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
 }
 
