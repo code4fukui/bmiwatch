@@ -200,11 +200,12 @@ function render() {
 function renderStats() {
   const latest = records.at(-1);
   const targetKg = getTargetWeight(settings.targetBmi);
+  const latestDiff = latest ? getDisplayWeightDiff(latest.weightKg) : null;
 
   currentBmi.textContent = latest && settings.heightCm ? formatBmi(calcBmi(latest.weightKg)) : "-";
   latestWeight.textContent = latest ? `${formatWeight(latest.weightKg)} / ${formatDateTime(latest.timestamp)}` : "まだ記録がありません";
   targetWeight.textContent = targetKg ? formatWeight(targetKg) : "-";
-  remainingWeight.textContent = latest && targetKg ? formatWeightDiff(latest.weightKg - targetKg) : "-";
+  remainingWeight.textContent = latestDiff ? formatWeightDiff(latestDiff) : "-";
 }
 
 function renderTable() {
@@ -214,11 +215,11 @@ function renderTable() {
   for (const record of [...records].reverse()) {
     const row = rowTemplate.content.firstElementChild.cloneNode(true);
     const timeCell = row.querySelector(".time-cell");
-    const targetKg = getTargetWeight(settings.targetBmi);
+    const displayDiff = getDisplayWeightDiff(record.weightKg);
 
     row.querySelector(".weight-cell").textContent = formatWeight(record.weightKg);
     row.querySelector(".bmi-cell").textContent = settings.heightCm ? formatBmi(calcBmi(record.weightKg)) : "-";
-    row.querySelector(".diff-cell").textContent = targetKg ? formatWeightDiff(record.weightKg - targetKg) : "-";
+    row.querySelector(".diff-cell").textContent = displayDiff ? formatWeightDiff(displayDiff) : "-";
 
     if (editingRecordId === record.id) {
       renderTimeEditor(timeCell, record);
@@ -368,6 +369,23 @@ function getTargetWeight(bmi) {
   return bmi * heightM * heightM;
 }
 
+function getDisplayWeightDiff(weightKg) {
+  if (!settings.heightCm) {
+    return null;
+  }
+
+  const bmi = calcBmi(weightKg);
+  if (bmi >= STANDARD_BMI_LOWER && bmi <= STANDARD_BMI_UPPER) {
+    return { achieved: true, kg: 0 };
+  }
+
+  const boundaryBmi = bmi < STANDARD_BMI_LOWER ? STANDARD_BMI_LOWER : STANDARD_BMI_UPPER;
+  return {
+    achieved: false,
+    kg: Math.abs(weightKg - getTargetWeight(boundaryBmi)),
+  };
+}
+
 function resolveTargetBmi(weightKg, heightCm) {
   const enteredTargetBmi = Number(targetBmiInput.value);
   if (targetBmiInput.value.trim() !== "" && isValidBmi(enteredTargetBmi)) {
@@ -496,6 +514,7 @@ function buildCsv(source) {
     ["日時", "日付", "体重kg", "BMI", "身長cm", "目標BMI", "目標体重kg", "目標差kg"],
     ...source.map((record) => {
       const targetKg = getTargetWeight(settings.targetBmi);
+      const displayDiff = getDisplayWeightDiff(record.weightKg);
       return [
         formatDateTime(record.timestamp),
         getLocalDateKey(new Date(record.timestamp)),
@@ -504,7 +523,7 @@ function buildCsv(source) {
         settings.heightCm ? String(settings.heightCm) : "",
         settings.targetBmi ? String(settings.targetBmi) : "",
         targetKg ? formatWeightNumber(targetKg) : "",
-        targetKg ? formatSignedNumber(record.weightKg - targetKg) : "",
+        displayDiff ? formatWeightDiff(displayDiff) : "",
       ];
     }),
   ];
@@ -633,15 +652,10 @@ function formatWeight(value) {
 }
 
 function formatWeightDiff(value) {
-  if (Math.abs(value) < 0.05) {
+  if (value.achieved || value.kg < 0.05) {
     return "達成";
   }
-  return `${formatSignedNumber(value)}kg`;
-}
-
-function formatSignedNumber(value) {
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${formatWeightNumber(value)}`;
+  return `${formatWeightNumber(value.kg)}kg`;
 }
 
 function formatWeightNumber(value) {
