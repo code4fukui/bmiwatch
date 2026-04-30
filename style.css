@@ -6,7 +6,6 @@
   --muted: #61746a;
   --accent: #18a66f;
   --accent-strong: #0d6f52;
-  --target: #f08c2f;
   --warn: #c94840;
   --shadow: 0 18px 45px rgba(42, 93, 70, 0.13);
 }
@@ -74,7 +73,7 @@ h1 {
 
 .form {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 150px)) auto;
+  grid-template-columns: repeat(2, minmax(0, 150px)) auto;
   gap: 16px;
   align-items: end;
 }
@@ -231,10 +230,6 @@ button[type="submit"] {
   background: var(--accent);
 }
 
-.target-swatch {
-  background: var(--target);
-}
-
 .standard-lower-swatch {
   background: #44b8d4;
 }
@@ -346,18 +341,6 @@ td:last-child {
   fill: #fff;
   stroke: var(--accent);
   stroke-width: 3;
-}
-
-.target-line {
-  stroke: var(--target);
-  stroke-width: 2;
-  stroke-dasharray: 7 6;
-}
-
-.target-label {
-  fill: var(--target);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .standard-line {

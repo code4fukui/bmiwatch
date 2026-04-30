@@ -10,7 +10,7 @@
   <main class="app">
     <section class="hero">
       <h1>BMI Watch</h1>
-      <p class="lead">体重を記録し、目標BMIから計算した目標体重へ近づいているかを確認できます。</p>
+      <p class="lead">体重を記録し、標準BMI範囲に入っているかを確認できます。</p>
     </section>
 
     <section class="panel">
@@ -22,10 +22,6 @@
         <label>
           <span>身長 cm</span>
           <input id="height-input" name="height" type="number" min="80" max="250" step="0.1" inputmode="decimal" required>
-        </label>
-        <label>
-          <span>目標BMI</span>
-          <input id="target-bmi-input" name="targetBmi" type="number" min="10" max="40" step="0.1" inputmode="decimal">
         </label>
         <div class="actions">
           <button type="submit">記録</button>
@@ -40,11 +36,11 @@
         <small id="latest-weight" class="subvalue">まだ記録がありません</small>
       </article>
       <article class="card">
-        <span class="label">目標体重</span>
-        <strong id="target-weight">-</strong>
+        <span class="label">標準体重範囲</span>
+        <strong id="standard-weight-range">-</strong>
       </article>
       <article class="card">
-        <span class="label">目標まで</span>
+        <span class="label">標準まで</span>
         <strong id="remaining-weight">-</strong>
       </article>
     </section>
@@ -54,7 +50,7 @@
         <h2>推移</h2>
       </div>
       <div id="chart-legend" class="chart-legend"></div>
-      <svg id="chart" viewBox="0 0 640 320" role="img" aria-label="体重と目標体重の推移グラフ"></svg>
+      <svg id="chart" viewBox="0 0 640 320" role="img" aria-label="体重と標準BMI範囲の推移グラフ"></svg>
       <p id="chart-empty" class="empty">記録を追加するとグラフが表示されます。</p>
     </section>
 
@@ -69,7 +65,7 @@
               <th>日時</th>
               <th>体重</th>
               <th>BMI</th>
-              <th>目標差</th>
+              <th>標準差</th>
               <th></th>
             </tr>
           </thead>

@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-A small web app for recording body weight and checking progress toward a target BMI.
+A small web app for recording body weight and checking whether it is in the standard BMI range.
 
 Live demo:
 https://code4fukui.github.io/bmiwatch/
@@ -10,10 +10,10 @@ https://code4fukui.github.io/bmiwatch/
 ## Features
 
 - Record body weight with the current timestamp
-- Save height and target BMI in `localStorage`
-- Auto-set the target BMI from the entered weight and height when the target field is empty
-- Calculate current BMI, target weight, and remaining weight difference
-- Show a weight trend chart with target weight and standard BMI lower/upper guide lines
+- Save height in `localStorage`
+- Calculate current BMI, standard weight range, and the difference to the nearest standard boundary
+- Show achieved status inside the standard BMI range, and show kg difference only outside that range
+- Show a weight trend chart with standard BMI lower/upper guide lines
 - Edit record timestamps and delete records
 - Import and export records as CSV
 
