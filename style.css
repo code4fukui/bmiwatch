@@ -1,14 +1,14 @@
 :root {
-  --bg: #f6f7f4;
-  --panel: rgba(255, 255, 255, 0.9);
-  --line: #d8dfd8;
-  --text: #1f2a24;
-  --muted: #647067;
-  --accent: #16745f;
-  --accent-strong: #0f5445;
-  --target: #d06f36;
-  --warn: #b44a2f;
-  --shadow: 0 18px 45px rgba(31, 42, 36, 0.1);
+  --bg: #f4fbf2;
+  --panel: rgba(255, 255, 255, 0.92);
+  --line: #c9e1cf;
+  --text: #173128;
+  --muted: #61746a;
+  --accent: #18a66f;
+  --accent-strong: #0d6f52;
+  --target: #f08c2f;
+  --warn: #c94840;
+  --shadow: 0 18px 45px rgba(42, 93, 70, 0.13);
 }
 
 * {
@@ -20,7 +20,8 @@ body {
   min-height: 100vh;
   font-family: "Avenir Next", "Hiragino Sans", sans-serif;
   color: var(--text);
-  background: linear-gradient(160deg, #f7faf6 0%, #eef3f2 52%, #f5f0e7 100%);
+  background:
+    linear-gradient(150deg, rgba(228, 248, 220, 0.86) 0%, rgba(240, 252, 246, 0.96) 42%, rgba(255, 247, 226, 0.9) 100%);
 }
 
 button,
@@ -48,6 +49,7 @@ h1 {
   margin-bottom: 12px;
   font-size: clamp(2rem, 4vw, 3.6rem);
   line-height: 1.05;
+  color: #0d6f52;
 }
 
 .lead {
@@ -58,7 +60,7 @@ h1 {
 
 .panel,
 .card {
-  border: 1px solid rgba(93, 111, 98, 0.18);
+  border: 1px solid rgba(69, 143, 102, 0.18);
   border-radius: 8px;
   background: var(--panel);
   box-shadow: var(--shadow);
@@ -93,14 +95,14 @@ input {
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.96);
   color: var(--text);
   text-align: right;
 }
 
 input:focus,
 button:focus {
-  outline: 3px solid rgba(22, 116, 95, 0.18);
+  outline: 3px solid rgba(24, 166, 111, 0.2);
   outline-offset: 2px;
 }
 
@@ -123,12 +125,12 @@ button:hover {
 
 button[type="submit"] {
   min-width: 96px;
-  background: var(--accent);
+  background: linear-gradient(135deg, #18a66f, #72bf44);
   color: #fff;
 }
 
 .secondary {
-  background: #e7ebe4;
+  background: #e6f3e6;
   color: var(--text);
 }
 
@@ -177,7 +179,7 @@ button[type="submit"] {
 }
 
 .hero-card {
-  background: linear-gradient(135deg, rgba(22, 116, 95, 0.96), rgba(15, 84, 69, 0.92));
+  background: linear-gradient(135deg, #18a66f, #78bd3f);
   color: #fff;
 }
 
@@ -234,11 +236,11 @@ button[type="submit"] {
 }
 
 .standard-lower-swatch {
-  background: #6f8fbf;
+  background: #44b8d4;
 }
 
 .standard-upper-swatch {
-  background: #9a8f3e;
+  background: #a9c23f;
 }
 
 #chart {
@@ -265,7 +267,7 @@ table {
 th,
 td {
   padding: 14px 8px;
-  border-bottom: 1px solid rgba(93, 111, 98, 0.16);
+  border-bottom: 1px solid rgba(69, 143, 102, 0.14);
   text-align: left;
   white-space: nowrap;
 }
@@ -313,12 +315,12 @@ td:last-child {
 
 .icon-button {
   padding: 8px 12px;
-  background: rgba(180, 74, 47, 0.12);
+  background: rgba(201, 72, 64, 0.1);
   color: var(--warn);
 }
 
 .grid-line {
-  stroke: rgba(100, 112, 103, 0.18);
+  stroke: rgba(97, 116, 106, 0.18);
   stroke-width: 1;
 }
 
@@ -364,11 +366,11 @@ td:last-child {
 }
 
 .standard-lower-line {
-  stroke: #6f8fbf;
+  stroke: #44b8d4;
 }
 
 .standard-upper-line {
-  stroke: #9a8f3e;
+  stroke: #a9c23f;
 }
 
 .standard-label {
