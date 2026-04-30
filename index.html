@@ -3,63 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily Sum</title>
-  <link rel="stylesheet" href="style.css?v=20260429">
+  <title>BMI Watch</title>
+  <link rel="stylesheet" href="style.css?v=20260430">
 </head>
 <body>
   <main class="app">
     <section class="hero">
-      <h1>DAILYSUM</h1>
-      <p class="lead">記録した時刻をそのまま保存し、今日の合計と日別グラフをすぐ確認できます。</p>
+      <h1>BMI Watch</h1>
+      <p class="lead">体重を記録し、目標BMIから計算した目標体重へ近づいているかを確認できます。</p>
     </section>
 
     <section class="panel">
       <form id="record-form" class="form">
-        <label class="amount-field">
-          <span>量</span>
-          <input id="amount-input" name="amount" type="number" min="0" step="0.1" inputmode="decimal" placeholder="0" required>
+        <label>
+          <span>体重 kg</span>
+          <input id="weight-input" name="weight" type="number" min="1" max="300" step="0.1" inputmode="decimal" placeholder="68.0" required>
         </label>
-        <label class="type-field">
-          <span>種別</span>
-          <input id="type-input" name="type" type="text" maxlength="40" placeholder="自由入力">
+        <label>
+          <span>身長 cm</span>
+          <input id="height-input" name="height" type="number" min="80" max="250" step="0.1" inputmode="decimal" placeholder="170.0" required>
+        </label>
+        <label>
+          <span>目標BMI</span>
+          <input id="target-bmi-input" name="targetBmi" type="number" min="10" max="40" step="0.1" inputmode="decimal" placeholder="22.0" required>
         </label>
         <div class="actions">
           <button type="submit">記録</button>
-        </div>
-        <div class="shortcut-block">
-          <div id="recent-shortcuts" class="shortcut-list"></div>
-          <p id="shortcut-empty" class="shortcut-empty">記録が増えるとここにショートカットが出ます。</p>
         </div>
       </form>
     </section>
 
     <section class="stats">
       <article class="card hero-card">
-        <span class="label">今日の合計量</span>
-        <strong id="today-total">0</strong>
-        <small id="today-count" class="subvalue">0件の記録</small>
+        <span class="label">現在BMI</span>
+        <strong id="current-bmi">-</strong>
+        <small id="latest-weight" class="subvalue">まだ記録がありません</small>
       </article>
       <article class="card">
-        <span class="label">最新の記録</span>
-        <strong id="latest-value">-</strong>
+        <span class="label">目標体重</span>
+        <strong id="target-weight">-</strong>
       </article>
       <article class="card">
-        <span class="label">記録日数</span>
-        <strong id="record-days">0</strong>
+        <span class="label">目標まで</span>
+        <strong id="remaining-weight">-</strong>
       </article>
     </section>
 
     <section class="panel chart-panel">
       <div class="section-head">
-        <h2>グラフ</h2>
+        <h2>推移</h2>
       </div>
-      <h3 class="chart-subtitle">全期間</h3>
       <div id="chart-legend" class="chart-legend"></div>
-      <svg id="chart" viewBox="0 0 640 320" role="img" aria-label="累積量の推移グラフ"></svg>
-      <div class="chart-separator"></div>
-      <h3 class="chart-subtitle">直近1週間の1日内増加</h3>
-      <div id="week-chart-legend" class="chart-legend"></div>
-      <svg id="week-chart" viewBox="0 0 640 280" role="img" aria-label="直近1週間の1日内増加グラフ"></svg>
+      <svg id="chart" viewBox="0 0 640 320" role="img" aria-label="体重と目標体重の推移グラフ"></svg>
       <p id="chart-empty" class="empty">記録を追加するとグラフが表示されます。</p>
     </section>
 
@@ -72,8 +67,9 @@
           <thead>
             <tr>
               <th>日時</th>
-              <th>種別</th>
-              <th>量</th>
+              <th>体重</th>
+              <th>BMI</th>
+              <th>目標差</th>
               <th></th>
             </tr>
           </thead>
@@ -87,8 +83,9 @@
   <template id="record-row-template">
     <tr>
       <td class="time-cell"></td>
-      <td class="type-cell"></td>
-      <td class="amount-cell"></td>
+      <td class="weight-cell"></td>
+      <td class="bmi-cell"></td>
+      <td class="diff-cell"></td>
       <td class="row-action">
         <button type="button" class="icon-button delete-button">削除</button>
       </td>
@@ -103,7 +100,7 @@
   <input id="import-file-input" type="file" accept=".csv,text/csv" hidden>
 
   <footer class="page-footer">
-    <a href="https://github.com/code4fukui/dailysum" target="_blank" rel="noreferrer">src on GitHub</a>
+    <a href="https://github.com/code4fukui/bmiwatch" target="_blank" rel="noreferrer">src on GitHub</a>
   </footer>
 
   <script src="main.js?v=20260430"></script>

@@ -1,54 +1,63 @@
-const STORAGE_KEY = "daily-sum-records";
+const STORAGE_KEY = "bmiwatch-records";
+const SETTINGS_KEY = "bmiwatch-settings";
 
 const form = document.getElementById("record-form");
-const typeInput = document.getElementById("type-input");
-const amountInput = document.getElementById("amount-input");
+const weightInput = document.getElementById("weight-input");
+const heightInput = document.getElementById("height-input");
+const targetBmiInput = document.getElementById("target-bmi-input");
 const importButton = document.getElementById("import-button");
 const importFileInput = document.getElementById("import-file-input");
 const exportButton = document.getElementById("export-button");
 const resetButton = document.getElementById("reset-button");
-const recentShortcuts = document.getElementById("recent-shortcuts");
-const shortcutEmpty = document.getElementById("shortcut-empty");
-const todayTotal = document.getElementById("today-total");
-const todayCount = document.getElementById("today-count");
-const latestValue = document.getElementById("latest-value");
-const recordDays = document.getElementById("record-days");
+const currentBmi = document.getElementById("current-bmi");
+const latestWeight = document.getElementById("latest-weight");
+const targetWeight = document.getElementById("target-weight");
+const remainingWeight = document.getElementById("remaining-weight");
 const chartLegend = document.getElementById("chart-legend");
-const weekChartLegend = document.getElementById("week-chart-legend");
 const chart = document.getElementById("chart");
-const weekChart = document.getElementById("week-chart");
 const chartEmpty = document.getElementById("chart-empty");
 const recordsBody = document.getElementById("records-body");
 const historyEmpty = document.getElementById("history-empty");
 const rowTemplate = document.getElementById("record-row-template");
 
+let settings = loadSettings();
 let records = loadRecords();
 let editingRecordId = null;
-let highlightedWeekDate = getRelativeDateKey(-1);
+
+heightInput.value = settings.heightCm ? trimNumber(settings.heightCm) : "";
+targetBmiInput.value = settings.targetBmi ? trimNumber(settings.targetBmi) : "22";
+if (records.length) {
+  weightInput.value = trimNumber(records.at(-1).weightKg);
+}
 
 render();
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  const type = typeInput.value.trim();
-  const amount = Number(amountInput.value);
+  const weightKg = Number(weightInput.value);
+  const heightCm = Number(heightInput.value);
+  const targetBmi = Number(targetBmiInput.value);
 
-  if (Number.isNaN(amount) || amount < 0) {
+  if (!isValidWeight(weightKg) || !isValidHeight(heightCm) || !isValidBmi(targetBmi)) {
     return;
   }
 
-  addRecord(amount, type);
-  amountInput.value = "";
-  amountInput.select();
+  settings = { heightCm, targetBmi };
+  persistSettings();
+  addRecord(weightKg);
+  weightInput.select();
 });
+
+heightInput.addEventListener("change", updateSettingsFromInputs);
+targetBmiInput.addEventListener("change", updateSettingsFromInputs);
 
 resetButton.addEventListener("click", () => {
   if (!records.length) {
     return;
   }
 
-  const confirmed = window.confirm("保存済みの記録をすべて削除しますか？");
+  const confirmed = window.confirm("保存済みの体重記録をすべて削除しますか？");
   if (!confirmed) {
     return;
   }
@@ -68,7 +77,7 @@ exportButton.addEventListener("click", () => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `daily-sum-${getLocalDateKey(new Date())}.csv`;
+  link.download = `bmiwatch-${getLocalDateKey(new Date())}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -93,17 +102,8 @@ importFileInput.addEventListener("change", async () => {
       return;
     }
 
-    const merged = [...records];
-    for (const record of imported) {
-      merged.push({
-        id: createRecordId(),
-        timestamp: record.timestamp,
-        type: record.type,
-        amount: record.amount,
-      });
-    }
-
-    records = merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    records = [...records, ...imported.map((record) => ({ ...record, id: createRecordId() }))]
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     persistRecords();
     render();
     window.alert(`${imported.length}件の記録を読み込みました。`);
@@ -113,6 +113,29 @@ importFileInput.addEventListener("change", async () => {
     importFileInput.value = "";
   }
 });
+
+function loadSettings() {
+  const raw = window.localStorage.getItem(SETTINGS_KEY);
+  if (!raw) {
+    return { heightCm: null, targetBmi: 22 };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const heightCm = Number(parsed?.heightCm);
+    const targetBmi = Number(parsed?.targetBmi);
+    return {
+      heightCm: isValidHeight(heightCm) ? heightCm : null,
+      targetBmi: isValidBmi(targetBmi) ? targetBmi : 22,
+    };
+  } catch {
+    return { heightCm: null, targetBmi: 22 };
+  }
+}
+
+function persistSettings() {
+  window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
 
 function loadRecords() {
   const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -139,27 +162,32 @@ function persistRecords() {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
 }
 
+function updateSettingsFromInputs() {
+  const heightCm = Number(heightInput.value);
+  const targetBmi = Number(targetBmiInput.value);
+  if (!isValidHeight(heightCm) || !isValidBmi(targetBmi)) {
+    return;
+  }
+
+  settings = { heightCm, targetBmi };
+  persistSettings();
+  render();
+}
+
 function render() {
-  const dailyTotals = aggregateDailyTotals(records);
-  const recentWeekSeries = buildRecentWeekSeries(records);
   renderStats();
-  renderShortcuts();
   renderTable();
-  renderChart(dailyTotals);
-  renderWeekChart(recentWeekSeries);
+  renderChart(records);
 }
 
 function renderStats() {
   const latest = records.at(-1);
-  const todayKey = getLocalDateKey(new Date());
-  const todaysRecords = records.filter((record) => getLocalDateKey(new Date(record.timestamp)) === todayKey);
-  const todaysTotal = todaysRecords.reduce((sum, record) => sum + record.amount, 0);
-  const dayCount = new Set(records.map((record) => getLocalDateKey(new Date(record.timestamp)))).size;
+  const targetKg = getTargetWeight();
 
-  todayTotal.textContent = formatAmount(todaysTotal);
-  todayCount.textContent = `${todaysRecords.length}件の記録`;
-  latestValue.textContent = latest ? formatLatestRecord(latest) : "-";
-  recordDays.textContent = String(dayCount);
+  currentBmi.textContent = latest && settings.heightCm ? formatBmi(calcBmi(latest.weightKg)) : "-";
+  latestWeight.textContent = latest ? `${formatWeight(latest.weightKg)} / ${formatDateTime(latest.timestamp)}` : "まだ記録がありません";
+  targetWeight.textContent = targetKg ? formatWeight(targetKg) : "-";
+  remainingWeight.textContent = latest && targetKg ? formatWeightDiff(latest.weightKg - targetKg) : "-";
 }
 
 function renderTable() {
@@ -169,8 +197,11 @@ function renderTable() {
   for (const record of [...records].reverse()) {
     const row = rowTemplate.content.firstElementChild.cloneNode(true);
     const timeCell = row.querySelector(".time-cell");
-    row.querySelector(".type-cell").textContent = record.type || "-";
-    row.querySelector(".amount-cell").textContent = formatAmount(record.amount);
+    const targetKg = getTargetWeight();
+
+    row.querySelector(".weight-cell").textContent = formatWeight(record.weightKg);
+    row.querySelector(".bmi-cell").textContent = settings.heightCm ? formatBmi(calcBmi(record.weightKg)) : "-";
+    row.querySelector(".diff-cell").textContent = targetKg ? formatWeightDiff(record.weightKg - targetKg) : "-";
 
     if (editingRecordId === record.id) {
       renderTimeEditor(timeCell, record);
@@ -203,40 +234,8 @@ function renderTable() {
   }
 }
 
-function renderShortcuts() {
-  recentShortcuts.textContent = "";
-
-  const latestCombos = [];
-  const seen = new Set();
-
-  for (const record of [...records].reverse()) {
-    const key = `${record.amount}\u0000${record.type}`;
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    latestCombos.push({ amount: record.amount, type: record.type });
-    if (latestCombos.length === 5) {
-      break;
-    }
-  }
-
-  shortcutEmpty.style.display = latestCombos.length ? "none" : "block";
-
-  for (const combo of latestCombos) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "shortcut-button";
-    button.textContent = formatShortcut(combo);
-    button.addEventListener("click", () => {
-      addRecord(combo.amount, combo.type);
-    });
-    recentShortcuts.appendChild(button);
-  }
-}
-
-function renderChart(dailyTotals) {
-  if (!dailyTotals.length) {
+function renderChart(source) {
+  if (!source.length || !settings.heightCm) {
     chartLegend.textContent = "";
     chart.innerHTML = "";
     chart.style.display = "none";
@@ -246,271 +245,106 @@ function renderChart(dailyTotals) {
 
   chart.style.display = "block";
   chartEmpty.style.display = "none";
+  chartLegend.innerHTML = `
+    <span class="legend-item"><span class="legend-swatch weight-swatch"></span><span>体重</span></span>
+    <span class="legend-item"><span class="legend-swatch target-swatch"></span><span>目標体重</span></span>
+  `;
 
   const width = 640;
   const height = 320;
   const padding = { top: 24, right: 24, bottom: 58, left: 56 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
-  const maxAmount = Math.max(...dailyTotals.map((record) => record.total), 1);
-  const range = maxAmount;
-  const types = getChartTypes(dailyTotals);
-  const colorMap = new Map(types.map((type) => [type, getTypeColor(type)]));
-  const step = innerWidth / dailyTotals.length;
-  const barWidth = Math.min(56, Math.max(22, step * 0.62));
+  const targetKg = getTargetWeight();
+  const weights = source.map((record) => record.weightKg);
+  const minWeight = Math.min(...weights, targetKg);
+  const maxWeight = Math.max(...weights, targetKg);
+  const margin = Math.max(2, (maxWeight - minWeight) * 0.18);
+  const minY = Math.floor((minWeight - margin) * 10) / 10;
+  const maxY = Math.ceil((maxWeight + margin) * 10) / 10;
+  const range = Math.max(1, maxY - minY);
+  const step = source.length > 1 ? innerWidth / (source.length - 1) : innerWidth;
 
+  const yForWeight = (weightKg) => padding.top + innerHeight - ((weightKg - minY) / range) * innerHeight;
+  const xForIndex = (index) => source.length > 1 ? padding.left + step * index : padding.left + innerWidth / 2;
+  const points = source.map((record, index) => ({
+    x: xForIndex(index),
+    y: yForWeight(record.weightKg),
+    record,
+  }));
   const yLabels = Array.from({ length: 4 }, (_, index) => {
-    const value = (range * (3 - index)) / 3;
+    const value = maxY - (range * index) / 3;
     const y = padding.top + (innerHeight * index) / 3;
     return { value, y };
   });
-
-  const bars = dailyTotals.flatMap((record, index) => {
-    const centerX = padding.left + step * index + step / 2;
-    const x = centerX - barWidth / 2;
-    let accumulated = 0;
-
-    return types.flatMap((type) => {
-      const amount = record.types[type] ?? 0;
-      if (!amount) {
-        return [];
-      }
-
-      const barHeight = (amount / range) * innerHeight;
-      accumulated += amount;
-      const y = padding.top + innerHeight - (accumulated / range) * innerHeight;
-
-      return [{
-        x,
-        y,
-        width: barWidth,
-        height: barHeight,
-        fill: colorMap.get(type),
-      }];
-    });
-  });
-
-  renderChartLegend(types, colorMap);
+  const targetY = yForWeight(targetKg);
+  const path = points.map((point, index) => `${index ? "L" : "M"} ${point.x} ${point.y}`).join(" ");
 
   chart.innerHTML = `
     ${yLabels.map(({ y }) => `<line class="grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`).join("")}
-    ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${formatAxisValue(value)}</text>`).join("")}
-    ${bars.map((bar) => `<rect class="chart-bar" x="${bar.x}" y="${bar.y}" width="${bar.width}" height="${bar.height}" fill="${bar.fill}"></rect>`).join("")}
-    ${dailyTotals.map((point, index) => {
-      const centerX = padding.left + step * index + step / 2;
-      const topY = padding.top + innerHeight - (point.total / range) * innerHeight;
-      return `<text class="axis-total-label" x="${centerX}" y="${Math.max(padding.top - 6, topY - 8)}" text-anchor="middle">${trimNumber(point.total)}</text>`;
-    }).join("")}
-    ${dailyTotals.map((point, index) => {
-      const centerX = padding.left + step * index + step / 2;
+    ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${formatWeightNumber(value)}</text>`).join("")}
+    <line class="target-line" x1="${padding.left}" y1="${targetY}" x2="${width - padding.right}" y2="${targetY}"></line>
+    <text class="target-label" x="${width - padding.right}" y="${Math.max(14, targetY - 8)}" text-anchor="end">${formatWeight(targetKg)}</text>
+    <path class="weight-line" d="${path}"></path>
+    ${points.map(({ x, y }) => `<circle class="weight-point" cx="${x}" cy="${y}" r="4"></circle>`).join("")}
+    ${source.map((record, index) => {
+      const x = xForIndex(index);
       return `
-        <text class="axis-label" x="${centerX}" y="${height - 30}" text-anchor="middle">${shortDate(point.date)}</text>
-        <text class="axis-sub-label" x="${centerX}" y="${height - 12}" text-anchor="middle">${point.count}件</text>
+        <text class="axis-label" x="${x}" y="${height - 30}" text-anchor="middle">${shortDate(getLocalDateKey(new Date(record.timestamp)))}</text>
+        <text class="axis-sub-label" x="${x}" y="${height - 12}" text-anchor="middle">${formatBmi(calcBmi(record.weightKg))}</text>
       `;
     }).join("")}
   `;
 }
 
-function renderWeekChart(weekSeries) {
-  if (!weekSeries.length) {
-    weekChartLegend.textContent = "";
-    weekChart.innerHTML = "";
-    weekChart.style.display = "none";
-    return;
-  }
-
-  weekChart.style.display = "block";
-
-  const width = 640;
-  const height = 280;
-  const padding = { top: 24, right: 24, bottom: 54, left: 56 };
-  const innerWidth = width - padding.left - padding.right;
-  const innerHeight = height - padding.top - padding.bottom;
-  const maxAmount = Math.max(...weekSeries.flatMap((series) => series.points.map((point) => point.amount)), 1);
-
-  const yLabels = Array.from({ length: 4 }, (_, index) => {
-    const value = (maxAmount * (3 - index)) / 3;
-    const y = padding.top + (innerHeight * index) / 3;
-    return { value, y };
-  });
-
-  const xLabels = [0, 6, 12, 18, 24].map((hour) => {
-    const x = padding.left + (innerWidth * hour) / 24;
-    return { hour, x };
-  });
-
-  renderWeekChartLegend(weekSeries);
-
-  weekChart.innerHTML = `
-    ${yLabels.map(({ y }) => `<line class="grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`).join("")}
-    ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${formatAxisValue(value)}</text>`).join("")}
-    ${xLabels.map(({ x }) => `<line class="grid-line" x1="${x}" y1="${padding.top}" x2="${x}" y2="${padding.top + innerHeight}"></line>`).join("")}
-    ${weekSeries.map((series) => {
-      const isSelected = highlightedWeekDate === series.date;
-      const strokeOpacity = series.isToday ? 1 : (isSelected ? 0.7 : series.opacity);
-      const strokeColor = isSelected && !series.isToday ? "#d26a32" : series.color;
-      const path = series.points.map((point, index) => {
-        const x = padding.left + (innerWidth * point.hour) / 24;
-        const y = padding.top + innerHeight - (point.amount / maxAmount) * innerHeight;
-
-        if (index === 0) {
-          return `M ${x} ${y}`;
-        }
-
-        const previous = series.points[index - 1];
-        const previousX = padding.left + (innerWidth * previous.hour) / 24;
-        const previousY = padding.top + innerHeight - (previous.amount / maxAmount) * innerHeight;
-        return `L ${x} ${previousY} L ${x} ${y}`;
-      }).join(" ");
-      return `<path class="week-line ${series.isToday ? "today" : "past"} ${isSelected ? "is-selected" : ""}" d="${path}" stroke="${strokeColor}" opacity="${strokeOpacity}" data-date="${series.date}"></path>`;
-    }).join("")}
-    ${xLabels.map(({ hour, x }) => `<text class="axis-label" x="${x}" y="${height - 12}" text-anchor="middle">${hour}</text>`).join("")}
-  `;
-}
-
-function aggregateDailyTotals(source) {
-  const totals = new Map();
-
-  for (const record of source) {
-    const date = getLocalDateKey(new Date(record.timestamp));
-    const type = record.type || "";
-    const daily = totals.get(date) ?? { total: 0, count: 0, types: {} };
-    daily.total += record.amount;
-    daily.count += 1;
-    daily.types[type] = (daily.types[type] ?? 0) + record.amount;
-    totals.set(date, daily);
-  }
-
-  return [...totals.entries()]
-    .map(([date, summary]) => ({ date, total: summary.total, count: summary.count, types: summary.types }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
-function buildRecentWeekSeries(source) {
-  if (!source.length) {
-    return [];
-  }
-
-  const series = [];
-  const today = new Date();
-
-  for (let offset = 6; offset >= 0; offset -= 1) {
-    const date = new Date(today);
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - offset);
-    const key = getLocalDateKey(date);
-    const recordsInDay = source
-      .filter((record) => getLocalDateKey(new Date(record.timestamp)) === key)
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    let accumulated = 0;
-    const points = [{ hour: 0, amount: 0 }];
-
-    for (const record of recordsInDay) {
-      const time = new Date(record.timestamp);
-      accumulated += record.amount;
-      points.push({
-        hour: time.getHours() + time.getMinutes() / 60 + time.getSeconds() / 3600,
-        amount: accumulated,
-      });
-    }
-
-    points.push({ hour: 24, amount: accumulated });
-    const opacity = offset === 0 ? 1 : 0.16 + ((6 - offset) / 5) * 0.34;
-    series.push({
-      date: key,
-      isToday: offset === 0,
-      color: offset === 0 ? "#1a7f64" : "#7ba99c",
-      opacity,
-      count: recordsInDay.length,
-      total: accumulated,
-      points,
-    });
-  }
-
-  return series;
-}
-
 function normalizeRecord(item) {
-  if (!Number.isFinite(Number(item?.amount))) {
+  const weightKg = Number(item?.weightKg ?? item?.weight);
+  const timestamp = item?.timestamp;
+  if (!isValidWeight(weightKg) || typeof timestamp !== "string" || Number.isNaN(Date.parse(timestamp))) {
     return null;
   }
 
-  if (typeof item?.timestamp === "string" && !Number.isNaN(Date.parse(item.timestamp))) {
-    return {
-      id: typeof item.id === "string" ? item.id : createRecordId(),
-      timestamp: item.timestamp,
-      type: typeof item.type === "string" ? item.type : "",
-      amount: Number(item.amount),
-    };
-  }
-
-  if (typeof item?.date === "string") {
-    return {
-      id: createRecordId(),
-      timestamp: `${item.date}T00:00:00`,
-      type: typeof item.type === "string" ? item.type : "",
-      amount: Number(item.amount),
-    };
-  }
-
-  return null;
+  return {
+    id: typeof item.id === "string" ? item.id : createRecordId(),
+    timestamp,
+    weightKg,
+  };
 }
 
-function formatAmount(value) {
-  return trimNumber(value);
-}
-
-function formatAxisValue(value) {
-  return Math.round(value).toLocaleString("ja-JP");
-}
-
-function trimNumber(value) {
-  return Number(value).toLocaleString("ja-JP", {
-    maximumFractionDigits: 2,
+function addRecord(weightKg) {
+  records.push({
+    id: createRecordId(),
+    timestamp: new Date().toISOString(),
+    weightKg,
   });
+  records.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  persistRecords();
+  render();
 }
 
-function formatDateTime(value) {
-  return new Date(value).toLocaleString("ja-JP", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function calcBmi(weightKg) {
+  const heightM = settings.heightCm / 100;
+  return weightKg / (heightM * heightM);
 }
 
-function formatDateTimeLocal(value) {
-  const date = new Date(value);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hour}:${minute}`;
+function getTargetWeight() {
+  if (!settings.heightCm || !settings.targetBmi) {
+    return null;
+  }
+  const heightM = settings.heightCm / 100;
+  return settings.targetBmi * heightM * heightM;
 }
 
-function shortDate(value) {
-  const [year, month, day] = value.split("-");
-  return `${month}/${day}`;
+function isValidWeight(value) {
+  return Number.isFinite(value) && value >= 1 && value <= 300;
 }
 
-function getLocalDateKey(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function isValidHeight(value) {
+  return Number.isFinite(value) && value >= 80 && value <= 250;
 }
 
-function getRelativeDateKey(offsetDays) {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + offsetDays);
-  return getLocalDateKey(date);
-}
-
-function createRecordId() {
-  return `record-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+function isValidBmi(value) {
+  return Number.isFinite(value) && value >= 10 && value <= 40;
 }
 
 function renderTimeEditor(container, record) {
@@ -575,40 +409,27 @@ function updateRecordTimestamp(recordId, localValue) {
   render();
 }
 
-function addRecord(amount, type = "") {
-  records.push({
-    id: createRecordId(),
-    timestamp: new Date().toISOString(),
-    type,
-    amount,
-  });
-  records.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  persistRecords();
-  render();
-}
-
 function buildCsv(source) {
   const rows = [
-    ["日時", "日付", "種別", "量"],
-    ...source.map((record) => [
-      formatDateTime(record.timestamp),
-      getLocalDateKey(new Date(record.timestamp)),
-      record.type,
-      String(record.amount),
-    ]),
+    ["日時", "日付", "体重kg", "BMI", "身長cm", "目標BMI", "目標体重kg", "目標差kg"],
+    ...source.map((record) => {
+      const targetKg = getTargetWeight();
+      return [
+        formatDateTime(record.timestamp),
+        getLocalDateKey(new Date(record.timestamp)),
+        String(record.weightKg),
+        settings.heightCm ? formatBmi(calcBmi(record.weightKg)) : "",
+        settings.heightCm ? String(settings.heightCm) : "",
+        settings.targetBmi ? String(settings.targetBmi) : "",
+        targetKg ? formatWeightNumber(targetKg) : "",
+        targetKg ? formatSignedNumber(record.weightKg - targetKg) : "",
+      ];
+    }),
   ];
 
   return rows
     .map((row) => row.map(escapeCsvCell).join(","))
     .join("\r\n");
-}
-
-function escapeCsvCell(value) {
-  const text = String(value);
-  if (!/[",\r\n]/.test(text)) {
-    return text;
-  }
-  return `"${text.split("\"").join("\"\"")}"`;
 }
 
 function parseCsvRecords(text) {
@@ -622,6 +443,31 @@ function parseCsvRecords(text) {
     .slice(1)
     .map((row) => normalizeImportedRow(row))
     .filter(Boolean);
+}
+
+function normalizeImportedRow(row) {
+  const timestampText = row[0];
+  const weightKg = Number(row[2]);
+  const heightCm = Number(row[4]);
+  const targetBmi = Number(row[5]);
+
+  if (!timestampText || !isValidWeight(weightKg)) {
+    return null;
+  }
+
+  if (isValidHeight(heightCm) && isValidBmi(targetBmi)) {
+    settings = { heightCm, targetBmi };
+    heightInput.value = trimNumber(heightCm);
+    targetBmiInput.value = trimNumber(targetBmi);
+    persistSettings();
+  }
+
+  const timestamp = parseJaTimestamp(timestampText);
+  if (!timestamp) {
+    return null;
+  }
+
+  return { timestamp, weightKg };
 }
 
 function parseCsvRows(text) {
@@ -669,31 +515,11 @@ function parseCsvRows(text) {
   return rows.filter((currentRow) => currentRow.some((value) => value !== ""));
 }
 
-function normalizeImportedRow(row) {
-  const timestampText = row[0];
-  const type = row[2] || "";
-  const amount = Number(row[3]);
-
-  if (!timestampText || Number.isNaN(amount)) {
-    return null;
-  }
-
-  const timestamp = parseJaTimestamp(timestampText);
-  if (!timestamp) {
-    return null;
-  }
-
-  return {
-    timestamp,
-    type,
-    amount,
-  };
-}
-
 function parseJaTimestamp(text) {
   const value = String(text).trim();
   const match = value.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})$/)
-    || value.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/);
+    || value.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/)
+    || value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[T\s](\d{1,2}):(\d{2})/);
   if (!match) {
     return null;
   }
@@ -712,84 +538,83 @@ function parseJaTimestamp(text) {
   return date.toISOString();
 }
 
-function formatShortcut(record) {
-  return record.type ? `${formatAmount(record.amount)} ${record.type}` : formatAmount(record.amount);
-}
-
-function formatLatestRecord(record) {
-  const summary = record.type ? `${formatAmount(record.amount)} ${record.type}` : formatAmount(record.amount);
-  return `${summary} / ${formatDateTime(record.timestamp)}`;
-}
-
-function getChartTypes(dailyTotals) {
-  const types = new Set();
-  for (const record of dailyTotals) {
-    for (const type of Object.keys(record.types)) {
-      types.add(type);
-    }
+function escapeCsvCell(value) {
+  const text = String(value);
+  if (!/[",\r\n]/.test(text)) {
+    return text;
   }
-  return [...types].sort((a, b) => a.localeCompare(b, "ja"));
+  return `"${text.split("\"").join("\"\"")}"`;
 }
 
-function renderChartLegend(types, colorMap) {
-  chartLegend.textContent = "";
+function formatWeight(value) {
+  return `${formatWeightNumber(value)}kg`;
+}
 
-  for (const type of types) {
-    const item = document.createElement("span");
-    item.className = "legend-item";
-
-    const swatch = document.createElement("span");
-    swatch.className = "legend-swatch";
-    swatch.style.background = colorMap.get(type);
-
-    const label = document.createElement("span");
-    label.textContent = formatType(type);
-
-    item.append(swatch, label);
-    chartLegend.appendChild(item);
+function formatWeightDiff(value) {
+  if (Math.abs(value) < 0.05) {
+    return "達成";
   }
+  return `${formatSignedNumber(value)}kg`;
 }
 
-function renderWeekChartLegend(weekSeries) {
-  weekChartLegend.textContent = "";
-
-  for (const series of weekSeries) {
-    const item = document.createElement("span");
-    item.className = "legend-item";
-
-    const swatch = document.createElement("span");
-    swatch.className = "legend-swatch";
-    swatch.style.background = highlightedWeekDate === series.date && !series.isToday ? "#d26a32" : series.color;
-    swatch.style.opacity = String(series.isToday ? 1 : (highlightedWeekDate === series.date ? 0.7 : series.opacity));
-
-    const label = document.createElement("span");
-    label.textContent = `${shortDate(series.date)}${series.isToday ? " 今日" : ""}`;
-    if (highlightedWeekDate === series.date) {
-      item.classList.add("is-active");
-    }
-
-    item.append(swatch, label);
-    item.addEventListener("click", () => {
-      toggleWeekHighlight(series.date);
-    });
-    weekChartLegend.appendChild(item);
-  }
+function formatSignedNumber(value) {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatWeightNumber(value)}`;
 }
 
-function toggleWeekHighlight(date) {
-  highlightedWeekDate = highlightedWeekDate === date ? null : date;
-  renderWeekChart(buildRecentWeekSeries(records));
+function formatWeightNumber(value) {
+  return Number(value).toLocaleString("ja-JP", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
 }
 
-function getTypeColor(type) {
-  const palette = ["#1a7f64", "#d26a32", "#2b6cb0", "#b44a2f", "#7b5cc7", "#c2872f", "#008b8b", "#b83280"];
-  let hash = 0;
-  for (const char of type || "_") {
-    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  }
-  return palette[hash % palette.length];
+function formatBmi(value) {
+  return Number(value).toLocaleString("ja-JP", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
 }
 
-function formatType(type) {
-  return type || "未分類";
+function trimNumber(value) {
+  return Number(value).toLocaleString("ja-JP", {
+    maximumFractionDigits: 2,
+    useGrouping: false,
+  });
+}
+
+function formatDateTime(value) {
+  return new Date(value).toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDateTimeLocal(value) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function shortDate(value) {
+  const [, month, day] = value.split("-");
+  return `${month}/${day}`;
+}
+
+function getLocalDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function createRecordId() {
+  return `record-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }

@@ -1,13 +1,14 @@
 :root {
-  --bg: #f3efe5;
-  --panel: rgba(255, 252, 246, 0.88);
-  --line: #d8c9ab;
-  --text: #2b2418;
-  --muted: #6c614d;
-  --accent: #1a7f64;
-  --accent-strong: #115744;
+  --bg: #f6f7f4;
+  --panel: rgba(255, 255, 255, 0.9);
+  --line: #d8dfd8;
+  --text: #1f2a24;
+  --muted: #647067;
+  --accent: #16745f;
+  --accent-strong: #0f5445;
+  --target: #d06f36;
   --warn: #b44a2f;
-  --shadow: 0 24px 60px rgba(56, 44, 20, 0.12);
+  --shadow: 0 18px 45px rgba(31, 42, 36, 0.1);
 }
 
 * {
@@ -19,9 +20,7 @@ body {
   min-height: 100vh;
   font-family: "Avenir Next", "Hiragino Sans", sans-serif;
   color: var(--text);
-  background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.75), transparent 32%),
-    linear-gradient(160deg, #f6f1e7 0%, #ece3d0 100%);
+  background: linear-gradient(160deg, #f7faf6 0%, #eef3f2 52%, #f5f0e7 100%);
 }
 
 button,
@@ -37,15 +36,6 @@ input {
 
 .hero {
   margin-bottom: 24px;
-}
-
-.eyebrow {
-  margin: 0 0 8px;
-  color: var(--accent);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 h1,
@@ -68,8 +58,8 @@ h1 {
 
 .panel,
 .card {
-  border: 1px solid rgba(140, 119, 82, 0.18);
-  border-radius: 24px;
+  border: 1px solid rgba(93, 111, 98, 0.18);
+  border-radius: 8px;
   background: var(--panel);
   box-shadow: var(--shadow);
   backdrop-filter: blur(12px);
@@ -82,24 +72,14 @@ h1 {
 
 .form {
   display: grid;
-  grid-template-columns: minmax(0, 180px) minmax(0, 180px) auto;
+  grid-template-columns: repeat(3, minmax(0, 150px)) auto;
   gap: 16px;
-  max-width: 720px;
+  align-items: end;
 }
 
 .form label {
   display: grid;
   gap: 8px;
-}
-
-.type-field {
-  grid-column: 2;
-  max-width: 180px;
-}
-
-.amount-field {
-  grid-column: 1;
-  max-width: 180px;
 }
 
 .form span,
@@ -108,66 +88,25 @@ h1 {
   font-size: 0.95rem;
 }
 
-.shortcut-block {
-  grid-column: 1 / 3;
-  display: grid;
-  gap: 10px;
-}
-
-.shortcut-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.shortcut-button {
-  padding: 12px 18px;
-  background: var(--accent);
-  color: #fff;
-}
-
-@media (min-width: 721px) {
-  .shortcut-list {
-    flex-wrap: nowrap;
-  }
-
-  .shortcut-button {
-    white-space: nowrap;
-    flex: 0 1 auto;
-  }
-}
-
-.shortcut-empty {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.92rem;
-}
-
 input {
   width: 100%;
   padding: 14px 16px;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
   color: var(--text);
-}
-
-#amount-input {
   text-align: right;
 }
 
 input:focus,
 button:focus {
-  outline: 3px solid rgba(26, 127, 100, 0.18);
+  outline: 3px solid rgba(22, 116, 95, 0.18);
   outline-offset: 2px;
 }
 
 .actions {
-  grid-column: 3;
   display: flex;
   gap: 12px;
-  align-items: end;
-  padding-top: 27px;
 }
 
 button {
@@ -183,12 +122,13 @@ button:hover {
 }
 
 button[type="submit"] {
+  min-width: 96px;
   background: var(--accent);
   color: #fff;
 }
 
 .secondary {
-  background: #e6ddcb;
+  background: #e7ebe4;
   color: var(--text);
 }
 
@@ -202,11 +142,7 @@ button[type="submit"] {
 
 .footer-actions button {
   min-width: 140px;
-  box-shadow: 0 16px 30px rgba(56, 44, 20, 0.18);
-}
-
-.floating-reset {
-  display: block;
+  box-shadow: 0 12px 24px rgba(31, 42, 36, 0.12);
 }
 
 .page-footer {
@@ -223,11 +159,6 @@ button[type="submit"] {
   text-decoration: underline;
 }
 
-.floating-reset {
-  display: block;
-  box-shadow: 0 16px 30px rgba(56, 44, 20, 0.18);
-}
-
 .stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -242,11 +173,11 @@ button[type="submit"] {
 .card strong {
   display: block;
   margin-top: 8px;
-  font-size: clamp(1.4rem, 2vw, 2rem);
+  font-size: clamp(1.35rem, 2vw, 2rem);
 }
 
 .hero-card {
-  background: linear-gradient(135deg, rgba(26, 127, 100, 0.96), rgba(17, 87, 68, 0.92));
+  background: linear-gradient(135deg, rgba(22, 116, 95, 0.96), rgba(15, 84, 69, 0.92));
   color: #fff;
 }
 
@@ -279,29 +210,12 @@ button[type="submit"] {
   margin-bottom: 14px;
 }
 
-.chart-subtitle {
-  margin: 0 0 12px;
-  font-size: 1rem;
-}
-
-.chart-separator {
-  height: 1px;
-  margin: 20px 0;
-  background: rgba(140, 119, 82, 0.18);
-}
-
 .legend-item {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   color: var(--muted);
   font-size: 0.92rem;
-  cursor: pointer;
-}
-
-.legend-item.is-active {
-  color: var(--text);
-  font-weight: 700;
 }
 
 .legend-swatch {
@@ -311,38 +225,15 @@ button[type="submit"] {
   flex: 0 0 auto;
 }
 
-.axis-sub-label {
-  fill: var(--muted);
-  font-size: 11px;
+.weight-swatch {
+  background: var(--accent);
 }
 
-.axis-total-label {
-  fill: var(--text);
-  font-size: 11px;
-  font-weight: 700;
+.target-swatch {
+  background: var(--target);
 }
 
-.week-line {
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.week-line.past {
-  opacity: 0.26;
-}
-
-.week-line.today {
-  stroke-width: 3;
-}
-
-.week-line.is-selected {
-  stroke-width: 4;
-}
-
-#chart,
-#week-chart {
+#chart {
   width: 100%;
   height: auto;
   display: none;
@@ -366,8 +257,9 @@ table {
 th,
 td {
   padding: 14px 8px;
-  border-bottom: 1px solid rgba(140, 119, 82, 0.18);
+  border-bottom: 1px solid rgba(93, 111, 98, 0.16);
   text-align: left;
+  white-space: nowrap;
 }
 
 .time-button {
@@ -418,7 +310,7 @@ td:last-child {
 }
 
 .grid-line {
-  stroke: rgba(108, 97, 77, 0.18);
+  stroke: rgba(100, 112, 103, 0.18);
   stroke-width: 1;
 }
 
@@ -427,9 +319,35 @@ td:last-child {
   font-size: 12px;
 }
 
-.chart-bar {
-  rx: 0;
-  ry: 0;
+.axis-sub-label {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.weight-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.weight-point {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.target-line {
+  stroke: var(--target);
+  stroke-width: 2;
+  stroke-dasharray: 7 6;
+}
+
+.target-label {
+  fill: var(--target);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 @media (max-width: 720px) {
@@ -443,19 +361,8 @@ td:last-child {
     grid-template-columns: 1fr;
   }
 
-  .actions {
-    grid-column: 1;
-    padding-top: 0;
-  }
-
-  .type-field,
-  .amount-field {
-    max-width: none;
-  }
-
   .panel {
     padding: 18px;
-    border-radius: 20px;
   }
 
   .footer-actions {

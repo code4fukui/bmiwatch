@@ -1,20 +1,20 @@
-# dailysum
+# bmiwatch
 
 [日本語](README.ja.md)
 
-A small web app for recording an amount and free-text type with timestamps, showing today's total, daily charts, recent shortcuts, and CSV export.
+A small web app for recording body weight and checking progress toward a target BMI.
 
 Live demo:
-https://code4fukui.github.io/dailysum/
+https://code4fukui.github.io/bmiwatch/
 
 ## Features
 
-- Record an amount and optional type with the current timestamp
-- Highlight today's total amount
-- Show a daily aggregated stacked bar chart color-coded by type
-- Reuse the last 5 unique amount-and-type combinations as shortcut buttons
-- Export all records as CSV
-- Store data in `localStorage`
+- Record body weight with the current timestamp
+- Save height and target BMI in `localStorage`
+- Calculate current BMI, target weight, and remaining weight difference
+- Show a weight trend chart with a target-weight guide line
+- Edit record timestamps and delete records
+- Import and export records as CSV
 
 ## Files
 
