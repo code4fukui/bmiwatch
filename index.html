@@ -374,8 +374,8 @@ function renderChart(source) {
   const standardUpperKg = getWeightForBmi(STANDARD_BMI_UPPER);
   chartLegend.innerHTML = `
     <span class="legend-item"><span class="legend-swatch weight-swatch"></span><span>体重</span></span>
-    <span class="legend-item"><span class="legend-swatch standard-lower-swatch"></span><span>標準下限</span></span>
-    <span class="legend-item"><span class="legend-swatch standard-upper-swatch"></span><span>標準上限</span></span>
+    <span class="legend-item"><span class="legend-swatch standard-lower-swatch"></span><span>標準BMI下限${formatBmi(STANDARD_BMI_LOWER)}</span></span>
+    <span class="legend-item"><span class="legend-swatch standard-upper-swatch"></span><span>標準BMI上限${formatBmi(STANDARD_BMI_UPPER)}</span></span>
   `;
   const weights = source.map((record) => record.weightKg);
   const guideWeights = [standardLowerKg, standardUpperKg];
@@ -413,9 +413,9 @@ function renderChart(source) {
     ${yLabels.map(({ y }) => `<line class="grid-line" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>`).join("")}
     ${yLabels.map(({ value, y }) => `<text class="axis-label" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${formatWeightNumber(value)}</text>`).join("")}
     <line class="standard-line standard-lower-line" x1="${padding.left}" y1="${standardLowerY}" x2="${width - padding.right}" y2="${standardLowerY}"></line>
-    <text class="standard-label" x="${width - padding.right}" y="${Math.max(14, standardLowerY - 8)}" text-anchor="end">下限 ${formatWeight(standardLowerKg)}</text>
+    <text class="standard-label" x="${width - padding.right}" y="${Math.max(14, standardLowerY - 8)}" text-anchor="end">BMI${formatBmi(STANDARD_BMI_LOWER)} / ${formatWeight(standardLowerKg)}</text>
     <line class="standard-line standard-upper-line" x1="${padding.left}" y1="${standardUpperY}" x2="${width - padding.right}" y2="${standardUpperY}"></line>
-    <text class="standard-label" x="${width - padding.right}" y="${Math.max(14, standardUpperY - 8)}" text-anchor="end">上限 ${formatWeight(standardUpperKg)}</text>
+    <text class="standard-label" x="${width - padding.right}" y="${Math.max(14, standardUpperY - 8)}" text-anchor="end">BMI${formatBmi(STANDARD_BMI_UPPER)} / ${formatWeight(standardUpperKg)}</text>
     <path class="weight-line" d="${path}"></path>
     ${points.map(({ x, y }) => `<circle class="weight-point" cx="${x}" cy="${y}" r="4"></circle>`).join("")}
     ${source.map((record) => {
