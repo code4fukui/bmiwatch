@@ -4,7 +4,7 @@
 
 ## ライブデモ
 
-**https://code4fukui.github.io/bmiwatch/**
+**https://github.com/code4fukui/bmiwatch
 
 画面上には現在のBMI、標準体重の範囲、目標までの進捗が表示されます。また、グラフによって体重の推移を視覚的に確認できます。
 

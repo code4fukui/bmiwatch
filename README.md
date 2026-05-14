@@ -6,7 +6,7 @@ A simple, client-side web app for tracking your body weight and BMI. It's built 
 
 ## Live Demo
 
-**https://code4fukui.github.io/bmiwatch/**
+**https://github.com/code4fukui/bmiwatch
 
 The interface displays your current BMI, healthy weight range, and progress toward your goal. A chart visualizes your weight trend over time.
 
